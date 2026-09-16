@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: 接口标准 V1.0 文档
-    url: https://github.com/OWNER/wheelchair-project/blob/main/docs/interfaces/
+    url: https://github.com/CaDof1n/wheelchair-project/blob/main/docs/interfaces/
     about: 提交 ICR 前请先通读《第一版全局软硬件接口标准》V1.0 (IW-IF-STD-001)
   - name: 问题台账 / 环境部署 FAQ
-    url: https://github.com/OWNER/wheelchair-project/issues
+    url: https://github.com/CaDof1n/wheelchair-project/issues
     about: ROS 2 / Docker 环境安装报错与版本冲突请先查 FAQ，避免重复提问
