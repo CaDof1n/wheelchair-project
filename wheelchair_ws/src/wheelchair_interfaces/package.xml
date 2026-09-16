@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>wheelchair_interfaces</name>
+  <version>1.0.0</version>
+  <description>
+    全局软硬件接口定义包。依据《第一版全局软硬件接口标准》V1.0（IW-IF-STD-001）
+    附录 A 生成，是整个项目的接口契约基线。
+
+    本包禁止依赖任何具体业务实现包（标准 §4.1）。
+    字段不得在未发起 ICR 的情况下改序、改名或改单位（标准 §附录A 引言）。
+  </description>
+
+  <maintainer email="todo@example.com">第六大组 · 架构与接口规范单元（接口开发负责人待填写）</maintainer>
+  <license>Proprietary</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>rosidl_default_generators</buildtool_depend>
+
+  <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
+
+  <exec_depend>rosidl_default_runtime</exec_depend>
+
+  <member_of_group>rosidl_interface_packages</member_of_group>
+
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

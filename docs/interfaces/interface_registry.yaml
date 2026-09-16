@@ -1,0 +1,473 @@
+# =============================================================================
+# interface_registry.yaml
+# 全局接口注册表 —— 依据《第一版全局软硬件接口标准》V1.0 (IW-IF-STD-001)
+#
+# 规则（标准 §8.3）：涉及 Topic、Service、Action、TF、串口或参数的改动，
+# 必须同步更新本文件，否则 PR 不予合并。
+#
+# 任何条目变更都必须附带 ICR 编号（见 .github/ISSUE_TEMPLATE/icr.yml）。
+# 禁止在 V1.x 内改变已有字段含义（标准 §1.5 第 4 条）。
+# =============================================================================
+
+meta:
+  document_id: IW-IF-STD-001
+  standard_version: V1.0
+  registry_version: 1.0.0
+  updated: 2026-09-14
+  owner: 第六大组 · 架构与接口规范单元
+  note: "本表由标准表 5 / 表 10 / 表 6 转录。编号为转录序号，非标准原表号。"
+
+# -----------------------------------------------------------------------------
+# Topic 基线（标准 §4.3）
+# -----------------------------------------------------------------------------
+topics:
+  - name: /cmd_vel
+    type: geometry_msgs/msg/Twist
+    pub: [安全过滤器]
+    sub: [串口桥]
+    rate: "20 Hz"
+    qos: CONTROL
+    frame: null
+    note: "唯一实物底盘速度输入。任何节点不得绕过安全过滤器直接连接电机驱动。"
+
+  - name: /wheelchair/cmd_vel/nav
+    type: geometry_msgs/msg/Twist
+    pub: [Nav2]
+    sub: [速度复用器]
+    rate: "10-20 Hz"
+    qos: CONTROL
+    note: "Nav2 输出重映射。"
+
+  - name: /wheelchair/cmd_vel/teleop
+    type: geometry_msgs/msg/Twist
+    pub: [手柄节点]
+    sub: [速度复用器]
+    rate: "20 Hz"
+    qos: CONTROL
+    note: "人工接管优先级高于导航。"
+
+  - name: /wheelchair/cmd_vel/task
+    type: geometry_msgs/msg/Twist
+    pub: [状态机]
+    sub: [速度复用器]
+    rate: "按需 20 Hz"
+    qos: CONTROL
+    note: "仅用于低速短动作。"
+
+  - name: /wheelchair/base/odom
+    type: nav_msgs/msg/Odometry
+    pub: [底盘里程计, EKF]
+    sub: [导航, 测试]
+    rate: "30 Hz"
+    qos: STATE
+    frame: odom
+
+  - name: /joint_states
+    type: sensor_msgs/msg/JointState
+    pub: [底盘驱动, 机械臂驱动]
+    sub: [robot_state_publisher, MoveIt 2]
+    rate: "30 Hz"
+    qos: STATE
+    note: "关节名称必须与 URDF 一致。"
+
+  - name: /wheelchair/base/mcu_state
+    type: wheelchair_interfaces/msg/McuState
+    pub: [串口桥]
+    sub: [监控, 测试]
+    rate: "10 Hz"
+    qos: STATE
+    note: "固件版本、通信计数、控制器状态。"
+
+  - name: /wheelchair/power/battery_state
+    type: sensor_msgs/msg/BatteryState
+    pub: [串口桥]
+    sub: [系统监控]
+    rate: "1 Hz"
+    qos: STATE
+
+  - name: /wheelchair/imu/data
+    type: sensor_msgs/msg/Imu
+    pub: [IMU 驱动, 串口桥]
+    sub: [EKF, 安全节点]
+    rate: "50 Hz"
+    qos: SENSOR
+    frame: imu_link
+
+  - name: /wheelchair/ultrasonic/ranges
+    type: wheelchair_interfaces/msg/RangeArray
+    pub: [串口桥]
+    sub: [安全, 避障]
+    rate: "10 Hz"
+    qos: SENSOR
+    note: "按传感器名与距离数组发布。"
+
+  - name: /scan
+    type: sensor_msgs/msg/LaserScan
+    pub: [雷达驱动]
+    sub: [SLAM, Nav2]
+    rate: "5-15 Hz"
+    qos: SENSOR
+    frame: laser_frame          # 注意：是 laser_frame，不是 laser_link
+
+  - name: /camera/color/image_raw
+    type: sensor_msgs/msg/Image
+    pub: [RGB-D 驱动]
+    sub: [视觉识别]
+    rate: "15-30 Hz"
+    qos: SENSOR
+
+  - name: /camera/color/camera_info
+    type: sensor_msgs/msg/CameraInfo
+    pub: [RGB-D 驱动]
+    sub: [视觉识别]
+    rate: "随图像"
+    qos: STATE
+    note: "内参与畸变参数。"
+
+  - name: /camera/depth/image_rect_raw
+    type: sensor_msgs/msg/Image
+    pub: [RGB-D 驱动]
+    sub: [目标定位]
+    rate: "15-30 Hz"
+    qos: SENSOR
+    note: "深度单位由 encoding 确定。"
+
+  - name: /camera/depth/points
+    type: sensor_msgs/msg/PointCloud2
+    pub: [RGB-D 驱动]
+    sub: [代价地图, 抓取]
+    rate: "5-15 Hz"
+    qos: SENSOR
+    note: "可按算力降频。"
+
+  - name: /map
+    type: nav_msgs/msg/OccupancyGrid
+    pub: [SLAM, map_server]
+    sub: [Nav2, RViz 2]
+    rate: "低频或事件"
+    qos: STATIC
+    frame: map
+
+  - name: /wheelchair/perception/detections
+    type: vision_msgs/msg/Detection3DArray
+    pub: [目标识别节点]
+    sub: [机械臂, 状态机]
+    rate: "5-15 Hz"
+    qos: EVENT
+    note: "类别、置信度、三维包围盒。"
+
+  - name: /wheelchair/perception/target_pose
+    type: geometry_msgs/msg/PoseStamped
+    pub: [目标定位节点]
+    sub: [机械臂规划]
+    rate: "事件"
+    qos: EVENT
+    note: "必须给出 frame_id 和时间戳。"
+
+  - name: /wheelchair/voice/text
+    type: std_msgs/msg/String
+    pub: [离线语音节点]
+    sub: [意图解析节点]
+    rate: "事件"
+    qos: EVENT
+
+  - name: /wheelchair/voice/intent
+    type: wheelchair_interfaces/msg/VoiceIntent
+    pub: [意图解析节点]
+    sub: [状态机]
+    rate: "事件"
+    qos: EVENT
+
+  - name: /wheelchair/stand/state
+    type: wheelchair_interfaces/msg/StandState
+    pub: [推杆控制节点]
+    sub: [状态机, 安全节点]
+    rate: "10 Hz"
+    qos: STATE
+    note: "姿态、行程、限位和故障。"
+
+  - name: /wheelchair/safety/status
+    type: wheelchair_interfaces/msg/SafetyStatus
+    pub: [安全监督节点]
+    sub: [全系统]
+    rate: "10 Hz 加事件"
+    qos: STATE
+    note: "急停、倾角、障碍和故障锁存。"
+
+  - name: /wheelchair/system/mode
+    type: wheelchair_interfaces/msg/SystemMode
+    pub: [状态机]
+    sub: [全系统]
+    rate: "2 Hz 加事件"
+    qos: STATE
+
+  - name: /diagnostics
+    type: diagnostic_msgs/msg/DiagnosticArray
+    pub: [所有硬件与核心节点]
+    sub: [监控, 测试]
+    rate: "1 Hz 加事件"
+    qos: EVENT
+
+  - name: /tf
+    type: tf2_msgs/msg/TFMessage
+    pub: ["各动态 TF 唯一所有者"]
+    sub: [全系统]
+    rate: "见标准 §5.1"
+    qos: SENSOR
+    note: "禁止重复发布同一变换。"
+
+  - name: /tf_static
+    type: tf2_msgs/msg/TFMessage
+    pub: [robot_state_publisher]
+    sub: [全系统]
+    rate: "启动时"
+    qos: STATIC
+    note: "静态外参。"
+
+  - name: /clock
+    type: rosgraph_msgs/msg/Clock
+    pub: [仿真器]
+    sub: [仿真节点]
+    rate: "仿真步进"
+    qos: STATE
+    note: "仅仿真发布。"
+
+# -----------------------------------------------------------------------------
+# Service 与 Action 基线（标准 §4.4）
+# -----------------------------------------------------------------------------
+services:
+  - name: /wheelchair/safety/set_soft_estop
+    type: std_srvs/srv/SetBool
+    server: 安全监督节点
+    note: "true 锁存软件急停；false 仅提出解除请求，仍需满足硬件与故障条件。"
+
+  - name: /wheelchair/system/reset_fault
+    type: std_srvs/srv/Trigger
+    server: 状态机
+    note: "在速度为零、急停释放且故障源消失后清除可恢复故障。"
+
+  - name: /wheelchair/system/health_check
+    type: std_srvs/srv/Trigger
+    server: 诊断聚合节点
+    note: "返回启动自检结论，详细项同时发布到 /diagnostics。"
+
+actions:
+  - name: /navigate_to_pose
+    type: nav2_msgs/action/NavigateToPose
+    server: Nav2
+    note: "标准点到点导航，禁止再包装第二套导航 Action。"
+
+  - name: /wheelchair/arm/grasp_object
+    type: wheelchair_interfaces/action/GraspObject
+    server: 抓取执行节点
+    note: "识别、规划、夹爪闭合与抬升的完整动作。"
+
+  - name: /wheelchair/stand/change_posture
+    type: wheelchair_interfaces/action/ChangePosture
+    server: 推杆控制节点
+    note: "坐下、站立或保持；执行期间底盘必须锁止。"
+
+# -----------------------------------------------------------------------------
+# TF 坐标系基线（标准 §5.1 / §5.2）
+# frame 名称不得带前导斜杠；同一 parent-child 变换只能由一个节点发布。
+# -----------------------------------------------------------------------------
+tf_frames:
+  - frame: map
+    parent: null
+    meaning: 全局固定地图坐标系
+    publisher: SLAM 或 map_server
+    type: 根坐标系
+
+  - frame: odom
+    parent: map
+    meaning: 局部连续里程计坐标系
+    publisher: "SLAM 或定位节点（二选一）"
+    type: "5-20 Hz"
+    constraint: "map 与 odom 职责不得交换：map 可全局校正，odom 必须局部连续。"
+
+  - frame: base_footprint
+    parent: odom
+    meaning: 车体在地面的投影，z=0
+    publisher: "robot_localization EKF 或底盘里程计（二选一）"
+    type: "30 Hz"
+    constraint: "连续无跳变，时间戳新鲜。"
+
+  - frame: base_link
+    parent: base_footprint
+    meaning: 车体几何参考中心
+    publisher: robot_state_publisher
+    type: 静态或关节派生
+
+  - frame: laser_frame
+    parent: base_link
+    meaning: 激光雷达测量原点
+    publisher: robot_state_publisher
+    type: 静态
+
+  - frame: imu_link
+    parent: base_link
+    meaning: IMU 测量原点
+    publisher: robot_state_publisher
+    type: 静态
+
+  - frame: camera_link
+    parent: base_link
+    meaning: RGB-D 相机机械安装坐标系
+    publisher: robot_state_publisher
+    type: 静态
+
+  - frame: camera_color_optical_frame
+    parent: camera_link
+    meaning: 彩色图像光学坐标系
+    publisher: robot_state_publisher
+    type: 静态
+    constraint: "光学坐标系保持 z 向前、x 向右、y 向下；业务节点不得手工改写。"
+
+  - frame: camera_depth_optical_frame
+    parent: camera_link
+    meaning: 深度图像光学坐标系
+    publisher: robot_state_publisher
+    type: 静态
+
+  - frame: seat_link
+    parent: base_link
+    meaning: 座椅与站立机构参考坐标系
+    publisher: robot_state_publisher
+    type: 随关节状态
+
+  - frame: arm_base_link
+    parent: seat_link
+    meaning: 机械臂基座坐标系
+    publisher: robot_state_publisher
+    type: 静态
+
+  - frame: arm_link_1..arm_link_6
+    parent: arm_link_(n-1)
+    meaning: 六轴机械臂关节链（arm_link_6 的父为 arm_link_5）
+    publisher: robot_state_publisher
+    type: 随关节状态
+    constraint: "JointState 名称、数量和 URDF 一致。"
+
+  - frame: gripper_link
+    parent: arm_link_6
+    meaning: 夹爪工具中心参考
+    publisher: robot_state_publisher
+    type: 随关节状态
+
+tf_ownership:
+  - transform: map -> odom
+    publisher: "SLAM 或定位节点二选一"
+    accept: "切换模式时不得同时运行两个发布源"
+  - transform: odom -> base_footprint
+    publisher: "robot_localization EKF 或底盘里程计二选一"
+    accept: "连续无跳变，时间戳新鲜"
+  - transform: base_footprint -> base_link
+    publisher: robot_state_publisher
+    accept: "安装高度与 URDF 一致"
+  - transform: base_link -> 传感器
+    publisher: robot_state_publisher
+    accept: "外参来自 CAD 和实测标定"
+  - transform: 机械臂关节链
+    publisher: robot_state_publisher
+    accept: "JointState 名称、数量和 URDF 一致"
+
+# -----------------------------------------------------------------------------
+# 串口协议（标准 §6）—— 上位机 <-> MCU
+# -----------------------------------------------------------------------------
+serial:
+  physical:
+    interface: "USB CDC 或 USB 转 UART；布线较长可用隔离 RS-485"
+    baud_rate: 115200
+    format: 8N1
+    byte_order: little-endian
+    max_payload_bytes: 128
+    framing: "二进制帧，无行结束符；控制命令可要求 ACK"
+    config: "通过参数 serial_port / baud_rate 配置，不得硬编码 COM 或 /dev 名称"
+
+  frame:
+    - { offset: 0,    len: 2, field: SOF,     note: "固定 0xAA 0x55" }
+    - { offset: 2,    len: 1, field: VERSION, note: "V1.0 固定 0x01" }
+    - { offset: 3,    len: 1, field: MSG_ID,  note: "见 message_ids" }
+    - { offset: 4,    len: 1, field: FLAGS,   note: "bit0 ACK_REQ, bit1 IS_ACK, bit2 IS_ERROR, 其余必须为 0" }
+    - { offset: 5,    len: 2, field: SEQ,     note: "uint16，发送方每帧递增，溢出回 0" }
+    - { offset: 7,    len: 2, field: LENGTH,  note: "PAYLOAD 字节数，范围 0-128" }
+    - { offset: 9,    len: N, field: PAYLOAD, note: "按 MSG_ID 解释" }
+    - { offset: "9+N", len: 2, field: CRC16,  note: "CRC-16/MODBUS，覆盖 VERSION 至 PAYLOAD，低字节先发送" }
+
+  message_ids:
+    - { id: "0x01", name: HOST_HEARTBEAT,    dir: "HOST->MCU", rate: "10 Hz",   use: "上位机存活和系统模式" }
+    - { id: "0x10", name: CMD_VEL,           dir: "HOST->MCU", rate: "20 Hz",   use: "底盘线速度和角速度命令" }
+    - { id: "0x11", name: CMD_POSTURE,       dir: "HOST->MCU", rate: "事件",    use: "坐下、站立或保持命令" }
+    - { id: "0x12", name: CMD_SOFT_ESTOP,    dir: "HOST->MCU", rate: "事件",    use: "软件急停锁存或解除请求" }
+    - { id: "0x13", name: CMD_OUTPUT_ENABLE, dir: "HOST->MCU", rate: "事件",    use: "执行机构使能；自检未通过时拒绝" }
+    - { id: "0x7E", name: ACK_NACK,          dir: "双向",      rate: "响应",    use: "确认可执行命令或返回错误" }
+    - { id: "0x81", name: MCU_HEARTBEAT,     dir: "MCU->HOST", rate: "10 Hz",   use: "固件状态和通信计数" }
+    - { id: "0xA0", name: BASE_STATE,        dir: "MCU->HOST", rate: "30 Hz",   use: "里程计、速度和四轮速度" }
+    - { id: "0xA1", name: IMU_STATE,         dir: "MCU->HOST", rate: "50 Hz",   use: "加速度、角速度和姿态" }
+    - { id: "0xA2", name: POWER_STATE,       dir: "MCU->HOST", rate: "1 Hz",    use: "电池电压、电流、SOC 和温度" }
+    - { id: "0xA3", name: SAFETY_STATE,      dir: "MCU->HOST", rate: "10 Hz +事件", use: "急停、限位、倾角和故障位" }
+    - { id: "0xA4", name: ULTRASONIC_STATE,  dir: "MCU->HOST", rate: "10 Hz",   use: "超声波距离数组" }
+
+  payloads:
+    CMD_VEL:                    # MSG_ID 0x10
+      - { offset: 0, type: int16,  field: linear_x,   unit: "mm/s",   range: "-200 ~ 200（实物初期）" }
+      - { offset: 2, type: int16,  field: angular_z,  unit: "mrad/s", range: "-400 ~ 400（实物初期）" }
+      - { offset: 4, type: uint16, field: timeout_ms, unit: ms,       range: "100 ~ 500，推荐 200" }
+    BASE_STATE:                 # MSG_ID 0xA0
+      - { offset: 0,  type: uint32,   field: mcu_time_ms,     unit: ms }
+      - { offset: 4,  type: int32,    field: x_mm,            unit: mm }
+      - { offset: 8,  type: int32,    field: y_mm,            unit: mm }
+      - { offset: 12, type: int32,    field: yaw_mrad,        unit: mrad }
+      - { offset: 16, type: int16,    field: linear_mm_s,     unit: "mm/s" }
+      - { offset: 18, type: int16,    field: angular_mrad_s,  unit: "mrad/s" }
+      - { offset: 20, type: "int16[4]", field: wheel_mm_s,    unit: "mm/s",  note: "前左、前右、后左、后右" }
+    SAFETY_STATE:               # MSG_ID 0xA3
+      - { offset: 0,  type: uint32, field: mcu_time_ms,   unit: ms }
+      - { offset: 4,  type: uint8,  field: estop_state,   note: "0 释放, 1 物理急停, 2 软件急停, 3 两者同时" }
+      - { offset: 5,  type: uint8,  field: drive_enabled, note: "0 禁止输出, 1 允许输出" }
+      - { offset: 6,  type: uint32, field: fault_bits,    note: "位定义见 fault_bits" }
+      - { offset: 10, type: int16,  field: roll_mrad,     unit: mrad }
+      - { offset: 12, type: int16,  field: pitch_mrad,    unit: mrad }
+      - { offset: 14, type: uint16, field: min_range_mm,  unit: mm, note: "未知为 0xFFFF" }
+    ACK_NACK:                   # MSG_ID 0x7E
+      - { offset: 0, type: uint16, field: ack_seq,    note: "被确认命令的 SEQ" }
+      - { offset: 2, type: uint8,  field: ack_msg_id, note: "被确认命令的 MSG_ID" }
+      - { offset: 3, type: uint8,  field: result,     note: "0 成功；非 0 为错误码" }
+      - { offset: 4, type: uint16, field: detail,     note: "错误补充信息，无补充时为 0" }
+
+  fault_bits:
+    - { bit: 0,     name: COMM_TIMEOUT,    level: 严重,      behavior: "速度置零，禁止驱动" }
+    - { bit: 1,     name: PHYSICAL_ESTOP,  level: 严重,      behavior: "硬件急停锁存，禁止驱动" }
+    - { bit: 2,     name: SOFT_ESTOP,      level: 严重,      behavior: "软件急停锁存，禁止驱动" }
+    - { bit: 3,     name: OVERCURRENT,     level: 严重,      behavior: "禁止对应输出并报告" }
+    - { bit: 4,     name: UNDERVOLTAGE,    level: 严重,      behavior: "停止运动，保护电池" }
+    - { bit: 5,     name: OVERTEMPERATURE, level: 严重,      behavior: "停止或降额，按固件阈值" }
+    - { bit: 6,     name: TILT_LIMIT,      level: 严重,      behavior: "速度置零，禁止站立" }
+    - { bit: 7,     name: ACTUATOR_LIMIT,  level: "警告或严重", behavior: "停止推杆，保留底盘判断" }
+    - { bit: 8,     name: SENSOR_INVALID,  level: 警告,      behavior: "标记数据无效并通知上位机" }
+    - { bit: 9,     name: CRC_RATE_HIGH,   level: 警告,      behavior: "保持安全限速并检查链路" }
+    - { bits: "10-31", name: RESERVED,     level: 保留,      behavior: "发送端置 0，接收端忽略未知位并记录" }
+
+  error_codes:
+    - { code: 0, name: OK,             meaning: "命令已接收并通过合法性检查" }
+    - { code: 1, name: BAD_LENGTH,     meaning: "载荷长度不符合消息定义" }
+    - { code: 2, name: UNSUPPORTED,    meaning: "版本或消息编号不支持" }
+    - { code: 3, name: INVALID_VALUE,  meaning: "字段越界或保留位非零" }
+    - { code: 4, name: NOT_READY,      meaning: "自检未通过或设备未就绪" }
+    - { code: 5, name: SAFETY_LOCKED,  meaning: "急停、倾斜或故障锁存导致拒绝" }
+    - { code: 6, name: BUSY,           meaning: "已有互斥动作正在执行" }
+    - { code: 7, name: TIMEOUT,        meaning: "命令已过有效期" }
+    - { code: 8, name: INTERNAL_ERROR, meaning: "固件内部错误" }
+
+  timeouts:
+    - "MCU 连续 300 ms 未收到有效 HOST_HEARTBEAT 或 CMD_VEL 时，立即把底盘速度置零。"
+    - "连续 1000 ms 未收到上位机有效帧时，置 COMM_TIMEOUT 故障并禁止驱动，直至通信恢复且收到合规复位。"
+    - "CMD_VEL 不重发旧命令；上位机持续发送最新值。离散命令设 ACK_REQ，100 ms 无响应可重试 2 次。"
+    - "重复 SEQ 的离散命令只执行一次，并再次返回相同 ACK。"
+    - "CRC 错误帧直接丢弃并计数；10 秒内错误率超过 1% 时置 CRC_RATE_HIGH。"
+
+  example_frame:
+    desc: "SEQ=42、线速度 200 mm/s、角速度 0、有效期 200 ms 的 CMD_VEL 帧，请求 ACK"
+    hex: "AA 55 01 10 01 2A 00 06 00 C8 00 00 00 C8 00 22 81"
+    crc16_modbus: "0x8122"
+    note: "低字节先发送"

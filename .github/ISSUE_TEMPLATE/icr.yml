@@ -1,0 +1,128 @@
+name: 接口变更申请 (ICR)
+description: 发起接口变更申请。依据《第一版全局软硬件接口标准》V1.0 §8.4 流程。
+title: "[ICR] <接口名> - <变更摘要>"
+labels: ["ICR", "interface-change"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 提交前必读
+        - V1.x 内 **不得** 改变已有字段含义（标准 §1.5 第 4 条）。
+        - 新增兼容 Topic / 可选字段 / 诊断项 → 次版本；修改类型、字段顺序、单位、语义或删除接口 → 主版本，必须迁移评审。
+        - 涉及 Topic、Service、Action、TF、串口或参数的改动，**必须同步更新** `docs/interfaces/interface_registry.yaml`（标准 §8.3）。
+        - 先更新 `wheelchair_interfaces` 与接口注册表，再更新发布方和订阅方（标准 §8.4 第 4 步）。
+
+  - type: dropdown
+    id: change_type
+    attributes:
+      label: 变更类型
+      options:
+        - 新增接口（兼容）
+        - 新增可选字段（兼容）
+        - 修改字段含义 / 单位 / 类型（破坏性）
+        - 删除或废弃接口（破坏性）
+        - 仅文档澄清，不改接口
+    validations:
+      required: true
+
+  - type: input
+    id: interface_name
+    attributes:
+      label: 受影响接口名
+      description: Topic / Service / Action / TF frame / 串口 MSG_ID
+      placeholder: "例：/wheelchair/safety/status 或 TF laser_frame 或串口 0xA3"
+    validations:
+      required: true
+
+  - type: input
+    id: owner
+    attributes:
+      label: 接口所有者
+      description: 每个公开接口必须指定唯一所有者（标准 §1.5 第 1 条）
+    validations:
+      required: true
+
+  - type: textarea
+    id: current_state
+    attributes:
+      label: 现状
+      description: 当前定义是什么？在哪个版本引入？
+    validations:
+      required: true
+
+  - type: textarea
+    id: target_state
+    attributes:
+      label: 目标
+      description: 希望改成什么？给出精确的新定义（字段名、类型、单位、范围）
+    validations:
+      required: true
+
+  - type: textarea
+    id: affected_groups
+    attributes:
+      label: 受影响的大组与接口
+      description: 逐组列出。标准 §8.4 第 2 步要求所有受影响组确认兼容性、安全影响与联调成本。
+      placeholder: |
+        - 机械结构与物理装配组：...
+        - 电气动力与底层控制组：...
+        - 自动导航与 SLAM 算法组：...
+        - 机械臂视觉与抓取控制组：...
+        - 语音交互与多模态控制组：...
+        - 系统集成测试与项目管理组：...
+    validations:
+      required: true
+
+  - type: textarea
+    id: safety_impact
+    attributes:
+      label: 安全影响评估
+      description: 是否触及速度、急停、推杆、姿态保护、路径规划或机械臂运动？是否影响失效安全设计（标准 §1.5 第 3 条）。
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 替代方案
+      description: 考虑过哪些其它做法？为什么不采用？
+    validations:
+      required: true
+
+  - type: textarea
+    id: migration
+    attributes:
+      label: 迁移与回退方案
+      description: 订阅方/发布方各需改什么？如何回退？废弃接口至少保留一个阶段并输出 deprecation 警告（标准 §8.4 第 6 步）。
+    validations:
+      required: true
+
+  - type: input
+    id: target_version
+    attributes:
+      label: 目标版本
+      placeholder: "例：V1.1（兼容） 或 V2.0（破坏性）"
+    validations:
+      required: true
+
+  - type: textarea
+    id: ai_record
+    attributes:
+      label: AI 工具使用记录（标准 §10）
+      description: 若本次变更借助 AI 工具，登记工具名称、输入目的、采用内容、人工修改与验证结果。无则填"无"。
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: 自查
+      options:
+        - label: 已更新 docs/interfaces/interface_registry.yaml
+          required: true
+        - label: 已确认不违反 V1.x 字段含义不变原则（或已按 V2.0 流程处理）
+          required: true
+        - label: 已列出所有受影响组，并知会其接口负责人
+          required: true
+        - label: 已评估对物理急停链路的影响（物理急停必须独立于 ROS 2 和上位机）
+          required: true

@@ -1,0 +1,49 @@
+# config/real/safety_limits.yaml
+# 安全上限 —— 实物环境
+#
+# 【安全红线】标准 §1.3：完成连续 50 次稳定空载运行及 50 至 70 kg 沙袋配重测试前，
+#             严禁人员乘坐进行通电或动态测试。
+#
+# 【变更管控】标准 §4.5 第 4 条：实物初期线速度上限 0.20 m/s、角速度上限 0.40 rad/s；
+#             通过安全评审后只允许用受版本控制的配置文件调整。
+#             本文件任何数值变更都必须走 ICR 流程并附安全评审记录。
+safety_limits:
+  environment: real
+  use_sim_time: false             # 标准 §4.1：实物统一 use_sim_time=false
+
+  linear:
+    max_velocity_m_s: 0.20        # 实物初期上限，未通过安全评审不得提高
+    max_accel_m_s2: 0.30
+  angular:
+    max_velocity_rad_s: 0.40      # 实物初期上限，未通过安全评审不得提高
+    max_accel_rad_s2: 0.60
+
+  # 与下位机固件对照：CMD_VEL 线性 ±200 mm/s、角速度 ±400 mrad/s（标准 CMD_VEL 载荷定义）
+  firmware_mirror:
+    max_linear_mm_s: 200
+    max_angular_mrad_s: 400
+    note: "以更严格者为准（标准 §3.4 第 3 条）"
+
+  command_timeout_ms: 200
+  command_min_rate_hz: 10.0
+
+  tilt:
+    max_roll_rad: 0.20
+    max_pitch_rad: 0.20
+    stand_max_roll_rad: 0.05     # 实物比仿真严格
+    stand_max_pitch_rad: 0.05
+
+  obstacle:
+    min_stop_distance_m: 0.25    # 实物比仿真留更多余量
+
+serial:
+  serial_port: /dev/ttyACM0      # 不得硬编码；此处为模板默认值，由 launch 参数覆盖
+  baud_rate: 115200
+
+safety_review:
+  # 通过安全评审后填写，未填写则 max_velocity 保持初始值
+  passed_50_no_load_runs: false
+  passed_sandbag_50_70kg: false
+  reviewed_by: ""
+  review_date: ""
+  icr_id: ""

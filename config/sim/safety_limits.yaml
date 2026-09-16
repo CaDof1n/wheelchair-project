@@ -1,0 +1,43 @@
+# config/sim/safety_limits.yaml
+# 安全上限 —— 仿真环境
+# 标准 §3.4 第 2 条：仿真与实物配置分别使用 sim 和 real 后缀，通过 launch 参数选择，
+#                   接口名称保持一致。
+# 标准 §3.4 第 3 条：安全上限必须同时在上位机安全过滤器和下位机固件中限制，以更严格者为准。
+safety_limits:
+  environment: sim
+  use_sim_time: true              # 标准 §4.1：仿真节点统一 use_sim_time=true
+
+  linear:
+    max_velocity_m_s: 0.8         # 标准运行模式表：SIMULATION 线速度不高于 0.8 m/s
+    max_accel_m_s2: 1.0
+  angular:
+    max_velocity_rad_s: 1.0
+    max_accel_rad_s2: 2.0
+
+  # 速度命令有效期（标准 §4.5 第 3 条：超过 200 ms 未更新即视为过期，复用器输出零速度）
+  command_timeout_ms: 200
+  command_min_rate_hz: 10.0
+
+  # 倾角保护
+  tilt:
+    max_roll_rad: 0.35
+    max_pitch_rad: 0.35
+    stand_max_roll_rad: 0.10     # 允许站立的最大倾角，超出则禁止站立
+    stand_max_pitch_rad: 0.10
+
+  # 障碍距离
+  obstacle:
+    min_stop_distance_m: 0.15
+
+serial:
+  serial_port: /dev/ttyACM0
+  baud_rate: 115200
+
+force_zero_conditions:
+  # 标准 §4.5 第 5 条：站立、急停、严重倾斜、串口失联或关键传感器故障时，线速度和角速度强制为零
+  force_zero_on:
+    - standing
+    - estop
+    - tilt_limit
+    - comm_timeout
+    - sensor_fault

@@ -1,0 +1,99 @@
+# ============================================================
+# wheelchair-project / .gitignore
+# 依据《第一版全局软硬件接口标准》V1.0 (IW-IF-STD-001) §8.3
+# 禁提交项：build、install、log、模型大文件、录制数据、API 密钥、密码、个人绝对路径
+# ============================================================
+
+# ---------- ROS 2 构建产物 ----------
+build/
+install/
+log/
+*.deb
+
+# ---------- 录制数据 ----------
+*.bag
+*.db3
+*.mcap
+*.pcap
+rosbag2_*/
+recordings/
+
+# ---------- CAD / 模型大文件（源文件不入库，仅入库导出网格）----------
+*.sldprt
+*.sldasm
+*.f3d
+*.step
+*.stp
+*.iges
+*.igs
+*.x_t
+*.3mf
+*.blend
+*.skp
+
+# 网格文件：>10MB 请改用 Git LFS，或放 wheelchair_description/meshes 下的 .dae/.stl
+*.stl
+*.dae
+*.obj
+*.ply
+
+# ---------- 密钥 / 凭据（§7.2 明确要求）----------
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+secrets.yaml
+secrets.yml
+api_keys.yaml
+api_keys.yml
+credentials.*
+
+# ---------- 个人绝对路径 / 机器相关配置 ----------
+*.local.yaml
+*.user
+local_setup.bash
+local_setup.sh
+local_setup.ps1
+.ros/
+colcon_defaults.local.yaml
+
+# ---------- IDE / 编辑器 ----------
+.vscode/*
+!.vscode/settings.json.example
+!.vscode/extensions.json
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ---------- C/C++ / 固件 ----------
+*.o
+*.a
+*.so
+*.elf
+*.bin
+*.hex
+!firmware/**/release/*.bin
+!firmware/**/release/*.hex
+firmware/**/build/
+
+# ---------- 平台 io ----------
+platformio/
+.pio/
+.pioenvs/
+.piolibdeps/

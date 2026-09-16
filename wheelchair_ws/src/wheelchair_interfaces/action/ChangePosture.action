@@ -1,0 +1,21 @@
+# ChangePosture.action
+# 标准 §附录A.8  —  服务端：推杆控制节点 / 对应 Action 名 /wheelchair/stand/change_posture
+#
+# 执行期间底盘必须锁止（标准 §2.2 运行模式表：STANDING 速度限制为 0）。
+
+# ===== Goal =====
+uint8 HOLD=0
+uint8 SEAT=1
+uint8 STAND=2
+
+uint8 target
+float32 speed_ratio                       # 动作速度比例 0.0 ~ 1.0
+---
+# ===== Result =====
+bool success
+uint16 error_code
+string message
+---
+# ===== Feedback =====
+uint8 current_state                       # 取值同 StandState.msg 的 state
+float32 position_ratio                    # 行程比例 0.0 ~ 1.0

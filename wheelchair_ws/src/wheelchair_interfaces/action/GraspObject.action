@@ -1,0 +1,20 @@
+# GraspObject.action
+# 标准 §附录A.7  —  服务端：抓取执行节点 / 对应 Action 名 /wheelchair/arm/grasp_object
+#
+# 完整动作语义：识别 -> 规划 -> 夹爪闭合 -> 抬升。
+# 执行期间底盘必须锁止（见 ChangePosture.action 与标准 §4.5 第 5 条）。
+
+# ===== Goal =====
+string object_id                          # 目标物体标识，来自 /wheelchair/perception/detections
+geometry_msgs/PoseStamped target_pose     # 必须给出 frame_id 与时间戳
+float32 approach_distance_m               # 接近段预留距离，m
+---
+# ===== Result =====
+bool success
+uint16 error_code                         # 错误码见标准 §6.5 ACK/NACK 与错误码
+string message
+---
+# ===== Feedback =====
+uint8 stage                               # 当前阶段编号，供 HMI 显示进度
+float32 progress                          # 0.0 ~ 1.0
+string message

@@ -1,0 +1,37 @@
+# 强制仓库内换行为 LF。
+# 构建目标是 Ubuntu 22.04 + ROS 2 Humble，CRLF 会导致 shell 脚本和 launch 文件出问题。
+* text=auto eol=lf
+
+# 二进制文件不做行尾转换
+*.docx  binary
+*.pdf   binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.stl   binary
+*.dae   binary
+*.bag   binary
+*.db3   binary
+*.mcap  binary
+*.xlsx  binary
+
+# 明确文本类型，便于 GitHub 语言统计与 diff
+*.md       text diff=markdown
+*.py       text diff=python
+*.yaml     text
+*.yml      text
+*.xml      text
+*.msg      text
+*.srv      text
+*.action   text
+*.urdf     text
+*.xacro    text
+*.launch   text
+*.launch.py text
+*.sh       text eol=lf
+*.ps1      text eol=crlf
+*.cpp      text
+*.hpp      text
+*.c        text
+*.h        text
+CMakeLists.txt text
