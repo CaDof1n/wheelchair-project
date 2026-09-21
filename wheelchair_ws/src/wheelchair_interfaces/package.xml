@@ -4,7 +4,7 @@
   <name>wheelchair_interfaces</name>
   <version>1.0.0</version>
   <description>
-    全局软硬件接口定义包。依据《第一版全局软硬件接口标准》V1.0（IW-IF-STD-001）
+    全局软硬件接口定义包。依据《第一版全局软硬件接口标准》V1.1（IW-IF-STD-001）
     附录 A 生成，是整个项目的接口契约基线。
 
     本包禁止依赖任何具体业务实现包（标准 §4.1）。

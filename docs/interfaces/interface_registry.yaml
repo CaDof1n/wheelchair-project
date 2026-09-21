@@ -1,21 +1,43 @@
 # =============================================================================
 # interface_registry.yaml
-# 全局接口注册表 —— 依据《第一版全局软硬件接口标准》V1.0 (IW-IF-STD-001)
+# 全局接口注册表 —— 依据《第一版全局软硬件接口标准》V1.1 (IW-IF-STD-001)
 #
 # 规则（标准 §8.3）：涉及 Topic、Service、Action、TF、串口或参数的改动，
 # 必须同步更新本文件，否则 PR 不予合并。
 #
 # 任何条目变更都必须附带 ICR 编号（见 .github/ISSUE_TEMPLATE/icr.yml）。
 # 禁止在 V1.x 内改变已有字段含义（标准 §1.5 第 4 条）。
+#
+# V1.1（2026-09-21）本表变化：
+#   - serial.payloads.SAFETY_STATE 末尾追加 posture_enabled（偏移 16，uint8）
+#   - 新增 nan_policy 段：登记允许用 NaN 表示"未知"的字段与串口哨兵转换规则
+#   - /tf 的 QoS 档存在待决风险，详见 pending_icrs 的 ICR-003
 # =============================================================================
 
 meta:
   document_id: IW-IF-STD-001
-  standard_version: V1.0
-  registry_version: 1.0.0
-  updated: 2026-09-14
+  standard_version: V1.1
+  supersedes: V1.0
+  registry_version: 1.1.0
+  updated: 2026-09-21
   owner: 第六大组 · 架构与接口规范单元
   note: "本表由标准表 5 / 表 10 / 表 6 转录。编号为转录序号，非标准原表号。"
+  revision: "V1.1 落地评审 REV-001 的 A1、A2、A3、C1、C3、C4；B1、B2、C2 见 pending_icrs"
+
+# -----------------------------------------------------------------------------
+# NaN 语义（标准 §3.2）
+# "无效浮点数不得静默传播"：NaN 只能出现在下列已登记字段中，且必须同步上报诊断。
+# -----------------------------------------------------------------------------
+nan_policy:
+  allowed_fields:
+    - RangeArray.ranges_m
+    - RangeArray.min_range_m
+    - RangeArray.max_range_m
+    - SafetyStatus.min_obstacle_distance_m
+  serial_sentinel:
+    value: "0xFFFF"
+    convert_in: serial_bridge
+    rule: "必须转换为 NaN，不得按 0.001 m/mm 直接缩放为 65.535 m"
 
 # -----------------------------------------------------------------------------
 # Topic 基线（标准 §4.3）
@@ -214,7 +236,7 @@ topics:
     sub: [全系统]
     rate: "见标准 §5.1"
     qos: SENSOR
-    note: "禁止重复发布同一变换。"
+    note: "禁止重复发布同一变换。QoS 档存在待决风险：SENSOR 为 BEST_EFFORT，而 tf2_ros 与 RViz 2 订阅端默认按 RELIABLE 请求，可靠性低于请求时连接无法建立，将导致 view_frames 与 IF-04 失败。见 pending_icrs 的 ICR-003。"
 
   - name: /tf_static
     type: tf2_msgs/msg/TFMessage
@@ -386,7 +408,7 @@ serial:
 
   frame:
     - { offset: 0,    len: 2, field: SOF,     note: "固定 0xAA 0x55" }
-    - { offset: 2,    len: 1, field: VERSION, note: "V1.0 固定 0x01" }
+    - { offset: 2,    len: 1, field: VERSION, note: "V1.0 起固定 0x01；载荷长度一律按 LENGTH 字段判定，不得按固定长度解析" }
     - { offset: 3,    len: 1, field: MSG_ID,  note: "见 message_ids" }
     - { offset: 4,    len: 1, field: FLAGS,   note: "bit0 ACK_REQ, bit1 IS_ACK, bit2 IS_ERROR, 其余必须为 0" }
     - { offset: 5,    len: 2, field: SEQ,     note: "uint16，发送方每帧递增，溢出回 0" }
@@ -421,21 +443,26 @@ serial:
       - { offset: 16, type: int16,    field: linear_mm_s,     unit: "mm/s" }
       - { offset: 18, type: int16,    field: angular_mrad_s,  unit: "mrad/s" }
       - { offset: 20, type: "int16[4]", field: wheel_mm_s,    unit: "mm/s",  note: "前左、前右、后左、后右" }
-    SAFETY_STATE:               # MSG_ID 0xA3
+    SAFETY_STATE:               # MSG_ID 0xA3；V1.1 起载荷 17 字节，接收端须同时容忍 16 与 17
       - { offset: 0,  type: uint32, field: mcu_time_ms,   unit: ms }
       - { offset: 4,  type: uint8,  field: estop_state,   note: "0 释放, 1 物理急停, 2 软件急停, 3 两者同时" }
       - { offset: 5,  type: uint8,  field: drive_enabled, note: "0 禁止输出, 1 允许输出" }
-      - { offset: 6,  type: uint32, field: fault_bits,    note: "位定义见 fault_bits" }
+      - { offset: 6,  type: uint32, field: fault_bits,    note: "位定义统一见表 12；本消息适用全部位。注意起于偏移 6，非 4 字节对齐，解析按小端逐字节拷出，不得依赖结构体自然对齐" }
       - { offset: 10, type: int16,  field: roll_mrad,     unit: mrad }
       - { offset: 12, type: int16,  field: pitch_mrad,    unit: mrad }
-      - { offset: 14, type: uint16, field: min_range_mm,  unit: mm, note: "未知为 0xFFFF" }
+      - { offset: 14, type: uint16, field: min_range_mm,  unit: mm, note: "未知为 0xFFFF，serial_bridge 须转为 NaN，不得缩放为 65.535 m" }
+      - { offset: 16, type: uint8,  field: posture_enabled, note: "V1.1 新增，追加于末尾。0 未使能, 1 使能；由推杆控制固件上报。帧头 VERSION 仍为 0x01；未收到或长度仅为 16 时，SafetyStatus.posture_enabled 置 false 并须通过 /diagnostics 报告来源缺失" }
     ACK_NACK:                   # MSG_ID 0x7E
       - { offset: 0, type: uint16, field: ack_seq,    note: "被确认命令的 SEQ" }
       - { offset: 2, type: uint8,  field: ack_msg_id, note: "被确认命令的 MSG_ID" }
       - { offset: 3, type: uint8,  field: result,     note: "0 成功；非 0 为错误码" }
       - { offset: 4, type: uint16, field: detail,     note: "错误补充信息，无补充时为 0" }
 
-  fault_bits:
+  fault_bits:                   # 标准表 12。SafetyStatus.fault_bits 与 StandState.fault_bits
+                                # 共用本表定义；StandState 侧仅 bit7 ACTUATOR_LIMIT 与
+                                # bit8 SENSOR_INVALID 适用，其余位置 0。
+                                # 命名空间另有独立方案（改名 stand_fault_bits 或改 uint8 枚举）
+                                # 见评审报告 REV-001 的 A3。
     - { bit: 0,     name: COMM_TIMEOUT,    level: 严重,      behavior: "速度置零，禁止驱动" }
     - { bit: 1,     name: PHYSICAL_ESTOP,  level: 严重,      behavior: "硬件急停锁存，禁止驱动" }
     - { bit: 2,     name: SOFT_ESTOP,      level: 严重,      behavior: "软件急停锁存，禁止驱动" }
@@ -471,3 +498,39 @@ serial:
     hex: "AA 55 01 10 01 2A 00 06 00 C8 00 00 00 C8 00 22 81"
     crc16_modbus: "0x8122"
     note: "低字节先发送"
+
+# -----------------------------------------------------------------------------
+# 待决接口变更申请（ICR）
+# 以下三项已写入标准 V1.1 正文作为占位标注，尚未实施；实施前不得修改本表对应条目。
+# 流程见标准 §8.4，提交入口 .github/ISSUE_TEMPLATE/icr.yml。
+# -----------------------------------------------------------------------------
+pending_icrs:
+  - id: ICR-001
+    issue: 2
+    title: "补齐 9 条串口消息的载荷字段表"
+    affects: "serial.message_ids 中 0x01 / 0x11 / 0x12 / 0x13 / 0x7E / 0x81 / 0xA1 / 0xA2 / 0xA4"
+    owner: 电气动力与底层控制组
+    target_version: V1.1
+    priority: 高
+    note: "表 8 共 12 条消息，仅 CMD_VEL、BASE_STATE、SAFETY_STATE 三条有载荷表。0x81 MCU_HEARTBEAT 最紧要——它是上位机侧唯一的固件健康通道，且 IF 验收会核查 CRC 错误计数。"
+    status: 待提交
+
+  - id: ICR-002
+    issue: 3
+    title: "表 3 与第 2 章子系统划分口径统一"
+    affects: "标准表 3 子系统与接口责任"
+    owner: 系统集成测试与项目管理组
+    target_version: V1.1
+    priority: 高
+    note: "第 2 章首段列 8 类能力，表 3 仅 6 行；安全监督、仿真、工程管理三类无所有者行，speed_mux 与 safety_filter 归属未定。"
+    status: 待提交
+
+  - id: ICR-003
+    issue: 4
+    title: "/tf 的 QoS 档调整"
+    affects: "topics 中 /tf 条目（qos: SENSOR -> 建议 STATE）"
+    owner: 自动导航与 SLAM 算法组
+    target_version: V1.1
+    priority: 中
+    note: "现按 SENSOR 档（BEST_EFFORT）发布，tf2_ros 与 RViz 2 订阅端默认按 RELIABLE 请求，发布端可靠性低于订阅端请求时连接无法建立。属改变现有接口 QoS 语义，须走 ICR。"
+    status: 待提交
