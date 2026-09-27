@@ -7,15 +7,58 @@
 #
 # 任何条目变更都必须附带 ICR 编号（见 .github/ISSUE_TEMPLATE/icr.yml）。
 # 禁止在 V1.x 内改变已有字段含义（标准 §1.5 第 4 条）。
+#
+# V1.0（第四周）本表变化 —— 版本号重新起算，与已归档的内部草案无继承关系：
+#   - topics: 新增 /wheelchair/cmd_vel_raw 与 4 条 /arm_camera/* 臂端相机话题；
+#             新增 /wheelchair/arm/wrench；/wheelchair/ultrasonic/ranges 10 -> 50 Hz；
+#             /tf 的 QoS 档由 SENSOR 改为 TF（ICR-003 闭环）
+#   - 新增 qos_profiles 段：标准 §4.2 的 6 档显式登记（含新增的 TF 档）
+#   - actions: 新增 /arm_controller/follow_joint_trajectory
+#   - tf_frames: 新增 arm_camera_link 与其光学坐标系
+#   - serial.message_ids: 0xA4 ULTRASONIC_STATE 10 -> 50 Hz（10 Hz 记为下限）
+#   - serial.payloads: 补齐 8 条消息的载荷表（ICR-001 闭环）
+#   - serial.fault_bits: 新增 bit10 WHEEL_STALL
+#   - serial.timeouts: 通信超时由 300 ms 收紧为 200 ms
+#   - pending_icrs -> resolved_icrs: 三项已裁决并落地，转为已闭环登记
 # =============================================================================
 
 meta:
   document_id: IW-IF-STD-001
   standard_version: V1.0
+  supersedes: null            # 旧 V1.0 / V1.1 为未协调的内部草案，见 docs/interfaces/archive/README.md
   registry_version: 1.0.0
-  updated: 2026-09-14
+  updated: 第四周
   owner: 第六大组 · 架构与接口规范单元
-  note: "本表由标准表 5 / 表 10 / 表 6 转录。编号为转录序号，非标准原表号。"
+  note: "本表由标准表 4-3 / 表 4-4 / 表 5-1 / 第 6 章转录。编号为转录序号，非标准原表号。"
+  revision: "V1.0 正式首发：落地跨组差异裁决 D1-D10、缺口新增 G1-G10、TBD 标记 T1-T4；ICR-001/002/003 全部闭环"
+
+# -----------------------------------------------------------------------------
+# NaN 语义（标准 §3.2）
+# "无效浮点数不得静默传播"：NaN 只能出现在下列已登记字段中，且必须同步上报诊断。
+# -----------------------------------------------------------------------------
+nan_policy:
+  allowed_fields:
+    - RangeArray.ranges_m
+    - RangeArray.min_range_m
+    - RangeArray.max_range_m
+    - SafetyStatus.min_obstacle_distance_m
+  serial_sentinel:
+    value: "0xFFFF"
+    convert_in: serial_bridge
+    rule: "必须转换为 NaN，不得按 0.001 m/mm 直接缩放为 65.535 m"
+
+# -----------------------------------------------------------------------------
+# QoS 配置档（标准 §4.2）
+# 发布方与订阅方必须使用兼容 QoS：订阅端请求的可靠性不得高于发布端提供的可靠性，
+# 否则连接无法建立。SENSOR 档允许丢帧，CONTROL 档不得丢帧。
+# -----------------------------------------------------------------------------
+qos_profiles:
+  - { name: CONTROL, reliability: RELIABLE,    history: "KEEP_LAST 1",  durability: VOLATILE,        applies: "速度、模式、安全命令" }
+  - { name: STATE,   reliability: RELIABLE,    history: "KEEP_LAST 10", durability: VOLATILE,        applies: "里程计、电池、系统状态" }
+  - { name: SENSOR,  reliability: BEST_EFFORT, history: "KEEP_LAST 5",  durability: VOLATILE,        applies: "激光、图像、点云、IMU 高频数据" }
+  - { name: EVENT,   reliability: RELIABLE,    history: "KEEP_LAST 20", durability: VOLATILE,        applies: "故障、语音意图、检测结果" }
+  - { name: STATIC,  reliability: RELIABLE,    history: "KEEP_LAST 1",  durability: TRANSIENT_LOCAL, applies: "/tf_static 和低频静态配置" }
+  - { name: TF,      reliability: RELIABLE,    history: "KEEP_LAST 100", durability: VOLATILE,       applies: "/tf 专用。tf2_ros 与 RViz 2 订阅端默认按 RELIABLE 请求；深度取 100 而非 STATE 档的 10，因动态变换以 30-50 Hz 广播，10 帧缓冲不足以覆盖短暂抖动", icr: ICR-003 }
 
 # -----------------------------------------------------------------------------
 # Topic 基线（标准 §4.3）
@@ -53,6 +96,14 @@ topics:
     rate: "按需 20 Hz"
     qos: CONTROL
     note: "仅用于低速短动作。"
+
+  - name: /wheelchair/cmd_vel_raw
+    type: geometry_msgs/msg/Twist
+    pub: [速度复用器]
+    sub: [安全过滤器]
+    rate: "20 Hz"
+    qos: CONTROL
+    note: "本版新增。复用器与安全过滤器之间的显式接口：复用器输出必须先落到本条，再由安全过滤器限幅与门控后发布到 /cmd_vel。无此条时两级节点间的连接无法被独立观测与测试。"
 
   - name: /wheelchair/base/odom
     type: nav_msgs/msg/Odometry
@@ -97,9 +148,9 @@ topics:
     type: wheelchair_interfaces/msg/RangeArray
     pub: [串口桥]
     sub: [安全, 避障]
-    rate: "10 Hz"
+    rate: "50 Hz（下限 10 Hz）"
     qos: SENSOR
-    note: "按传感器名与距离数组发布。"
+    note: "按传感器名与距离数组发布。本版频率由 10 Hz 改为 50 Hz，与 HC-SR04 的刷新能力一致；30 cm 安全阈值的响应时间随之由 100 ms 缩短到 20 ms。sensor_names 的命名与顺序未固定前不得发布本话题（T3）。"
 
   - name: /scan
     type: sensor_msgs/msg/LaserScan
@@ -139,6 +190,47 @@ topics:
     rate: "5-15 Hz"
     qos: SENSOR
     note: "可按算力降频。"
+
+  - name: /arm_camera/color/image_raw
+    type: sensor_msgs/msg/Image
+    pub: [臂端相机驱动]
+    sub: [抓取视觉]
+    rate: "15-30 Hz"
+    qos: SENSOR
+    frame: arm_camera_color_optical_frame
+    note: "本版新增。臂端相机（候选 RealSense D455 或 OAK-D Pro）的彩色原图。标准原本只有一个轮椅端 camera_link，机械臂组的手眼标定与抓取视觉无处接入（T4）。"
+
+  - name: /arm_camera/color/camera_info
+    type: sensor_msgs/msg/CameraInfo
+    pub: [臂端相机驱动]
+    sub: [抓取视觉]
+    rate: "随图像"
+    qos: STATE
+    note: "本版新增。臂端相机内参与畸变参数。"
+
+  - name: /arm_camera/depth/image_rect_raw
+    type: sensor_msgs/msg/Image
+    pub: [臂端相机驱动]
+    sub: [抓取视觉]
+    rate: "15-30 Hz"
+    qos: SENSOR
+    note: "本版新增。深度单位由 encoding 确定。"
+
+  - name: /arm_camera/depth/points
+    type: sensor_msgs/msg/PointCloud2
+    pub: [臂端相机驱动]
+    sub: [抓取规划, 碰撞场景]
+    rate: "5-15 Hz"
+    qos: SENSOR
+    note: "本版新增。可按算力降频。"
+
+  - name: /wheelchair/arm/wrench
+    type: geometry_msgs/msg/WrenchStamped
+    pub: [力传感器驱动]
+    sub: [抓取执行节点, 安全监督]
+    rate: "100 Hz 或按传感器"
+    qos: SENSOR
+    note: "本版新增。机械臂组的六维力传感器（候选 FT300 ±300 N / 100 Hz，或 ATI Mini45 ±580 N / 7 kHz）原本无对应话题，抓取力控与碰撞保护无法接入。frame_id 应为力传感器测量原点。"
 
   - name: /map
     type: nav_msgs/msg/OccupancyGrid
@@ -213,8 +305,8 @@ topics:
     pub: ["各动态 TF 唯一所有者"]
     sub: [全系统]
     rate: "见标准 §5.1"
-    qos: SENSOR
-    note: "禁止重复发布同一变换。"
+    qos: TF
+    note: "禁止重复发布同一变换。QoS 档已由 SENSOR 改为本节新增的 TF 档（RELIABLE / KEEP_LAST 100 / VOLATILE），闭环 ICR-003：tf2_ros 与 RViz 2 订阅端默认按 RELIABLE 请求，原 SENSOR 档为 BEST_EFFORT，可靠性低于订阅端请求时连接无法建立，会导致 view_frames 与 IF-04 验收失败。"
 
   - name: /tf_static
     type: tf2_msgs/msg/TFMessage
@@ -266,6 +358,11 @@ actions:
     type: wheelchair_interfaces/action/ChangePosture
     server: 推杆控制节点
     note: "坐下、站立或保持；执行期间底盘必须锁止。"
+
+  - name: /arm_controller/follow_joint_trajectory
+    type: control_msgs/action/FollowJointTrajectory
+    server: 机械臂驱动节点
+    note: "本版新增。MoveIt 2 与机械臂驱动之间唯一的轨迹执行出口，内部草案完全缺失，会导致机械臂组无法接入规划结果。控制器名固定为 arm_controller，不得改用 MoveIt 2 配置模板的默认名 joint_trajectory_controller。"
 
 # -----------------------------------------------------------------------------
 # TF 坐标系基线（标准 §5.1 / §5.2）
@@ -354,6 +451,27 @@ tf_frames:
     publisher: robot_state_publisher
     type: 随关节状态
 
+  - frame: arm_camera_link
+    parent: arm_link_6
+    meaning: 臂端相机机械安装坐标系
+    publisher: robot_state_publisher
+    type: 静态，外参待标定
+    constraint: "本版新增。外参来自手眼标定报告，标定完成前不得进入抓取联调（T4）。相机驱动须关闭自带 TF 发布，避免与 URDF 重复发布。"
+
+  - frame: arm_camera_color_optical_frame
+    parent: arm_camera_link
+    meaning: 臂端彩色图像光学坐标系
+    publisher: robot_state_publisher
+    type: 静态
+    constraint: "本版新增。保持 z 向前、x 向右、y 向下。"
+
+  - frame: arm_camera_depth_optical_frame
+    parent: arm_camera_link
+    meaning: 臂端深度图像光学坐标系
+    publisher: robot_state_publisher
+    type: 静态
+    constraint: "本版新增。保持 z 向前、x 向右、y 向下。"
+
 tf_ownership:
   - transform: map -> odom
     publisher: "SLAM 或定位节点二选一"
@@ -370,6 +488,9 @@ tf_ownership:
   - transform: 机械臂关节链
     publisher: robot_state_publisher
     accept: "JointState 名称、数量和 URDF 一致"
+  - transform: arm_link_6 -> arm_camera_link
+    publisher: robot_state_publisher
+    accept: "外参来自手眼标定报告，标定完成前不得进入抓取联调"
 
 # -----------------------------------------------------------------------------
 # 串口协议（标准 §6）—— 上位机 <-> MCU
@@ -386,7 +507,7 @@ serial:
 
   frame:
     - { offset: 0,    len: 2, field: SOF,     note: "固定 0xAA 0x55" }
-    - { offset: 2,    len: 1, field: VERSION, note: "V1.0 固定 0x01" }
+    - { offset: 2,    len: 1, field: VERSION, note: "V1.0 起固定 0x01；载荷长度一律按 LENGTH 字段判定，不得按固定长度解析" }
     - { offset: 3,    len: 1, field: MSG_ID,  note: "见 message_ids" }
     - { offset: 4,    len: 1, field: FLAGS,   note: "bit0 ACK_REQ, bit1 IS_ACK, bit2 IS_ERROR, 其余必须为 0" }
     - { offset: 5,    len: 2, field: SEQ,     note: "uint16，发送方每帧递增，溢出回 0" }
@@ -406,7 +527,7 @@ serial:
     - { id: "0xA1", name: IMU_STATE,         dir: "MCU->HOST", rate: "50 Hz",   use: "加速度、角速度和姿态" }
     - { id: "0xA2", name: POWER_STATE,       dir: "MCU->HOST", rate: "1 Hz",    use: "电池电压、电流、SOC 和温度" }
     - { id: "0xA3", name: SAFETY_STATE,      dir: "MCU->HOST", rate: "10 Hz +事件", use: "急停、限位、倾角和故障位" }
-    - { id: "0xA4", name: ULTRASONIC_STATE,  dir: "MCU->HOST", rate: "10 Hz",   use: "超声波距离数组" }
+    - { id: "0xA4", name: ULTRASONIC_STATE,  dir: "MCU->HOST", rate: "50 Hz（下限 10 Hz）", use: "超声波距离数组" }
 
   payloads:
     CMD_VEL:                    # MSG_ID 0x10
@@ -421,21 +542,81 @@ serial:
       - { offset: 16, type: int16,    field: linear_mm_s,     unit: "mm/s" }
       - { offset: 18, type: int16,    field: angular_mrad_s,  unit: "mrad/s" }
       - { offset: 20, type: "int16[4]", field: wheel_mm_s,    unit: "mm/s",  note: "前左、前右、后左、后右" }
-    SAFETY_STATE:               # MSG_ID 0xA3
+    SAFETY_STATE:               # MSG_ID 0xA3；V1.1 起载荷 17 字节，接收端须同时容忍 16 与 17
       - { offset: 0,  type: uint32, field: mcu_time_ms,   unit: ms }
       - { offset: 4,  type: uint8,  field: estop_state,   note: "0 释放, 1 物理急停, 2 软件急停, 3 两者同时" }
       - { offset: 5,  type: uint8,  field: drive_enabled, note: "0 禁止输出, 1 允许输出" }
-      - { offset: 6,  type: uint32, field: fault_bits,    note: "位定义见 fault_bits" }
+      - { offset: 6,  type: uint32, field: fault_bits,    note: "位定义统一见表 6-7；本消息适用全部位。注意起于偏移 6，非 4 字节对齐，解析按小端逐字节拷出，不得依赖结构体自然对齐" }
       - { offset: 10, type: int16,  field: roll_mrad,     unit: mrad }
       - { offset: 12, type: int16,  field: pitch_mrad,    unit: mrad }
-      - { offset: 14, type: uint16, field: min_range_mm,  unit: mm, note: "未知为 0xFFFF" }
+      - { offset: 14, type: uint16, field: min_range_mm,  unit: mm, note: "未知为 0xFFFF，serial_bridge 须转为 NaN，不得缩放为 65.535 m" }
+      - { offset: 16, type: uint8,  field: posture_enabled, note: "V1.1 新增，追加于末尾。0 未使能, 1 使能；由推杆控制固件上报。帧头 VERSION 仍为 0x01；未收到或长度仅为 16 时，SafetyStatus.posture_enabled 置 false 并须通过 /diagnostics 报告来源缺失" }
     ACK_NACK:                   # MSG_ID 0x7E
       - { offset: 0, type: uint16, field: ack_seq,    note: "被确认命令的 SEQ" }
       - { offset: 2, type: uint8,  field: ack_msg_id, note: "被确认命令的 MSG_ID" }
       - { offset: 3, type: uint8,  field: result,     note: "0 成功；非 0 为错误码" }
       - { offset: 4, type: uint16, field: detail,     note: "错误补充信息，无补充时为 0" }
 
-  fault_bits:
+    # ---------------------------------------------------------------
+    # 以下 8 条为本版新增（闭环 ICR-001）。均为本单元按电气动力与底层控制组
+    # 已公布的选型代拟的草案，字段的偏移、类型、缩放比例与哨兵取值
+    # 须该组按实测确认后方可视为冻结。标准表 6-8 至表 6-17。
+    # ---------------------------------------------------------------
+    HOST_HEARTBEAT:             # MSG_ID 0x01；LENGTH = 4
+      - { offset: 0, type: uint8,  field: mode,         note: "系统模式枚举，见表 2-2，取值 0-6" }
+      - { offset: 1, type: uint8,  field: flags,        note: "bit0 请求使能，bit1 请求软件急停，其余保留必须为 0" }
+      - { offset: 2, type: uint16, field: host_time_ms, unit: ms, note: "上位机单调时钟低 16 位；仅用于打点与丢帧判断，MCU 不得据此定时" }
+    CMD_POSTURE:                # MSG_ID 0x11；LENGTH = 4
+      - { offset: 0, type: uint8,  field: target,      note: "0 保持，1 坐下，2 站立；对应 ChangePosture.action 的 target" }
+      - { offset: 1, type: uint8,  field: speed_ratio, unit: "%", range: "0 ~ 100", note: "0 视为非法并以 INVALID_VALUE 拒绝" }
+      - { offset: 2, type: uint16, field: timeout_ms,  unit: ms, note: "命令有效期，推荐 2000" }
+    CMD_SOFT_ESTOP:             # MSG_ID 0x12；LENGTH = 2
+      - { offset: 0, type: uint8,  field: action,      note: "0 提出解除请求（仍需满足硬件与故障条件），1 锁存软件急停" }
+      - { offset: 1, type: uint8,  field: reserved,    note: "保留，必须为 0" }
+    CMD_OUTPUT_ENABLE:          # MSG_ID 0x13；LENGTH = 2
+      - { offset: 0, type: uint8,  field: enable,      note: "0 禁止执行机构输出，1 请求使能；自检未通过时 MCU 以 NOT_READY 拒绝" }
+      - { offset: 1, type: uint8,  field: reserved,    note: "保留，必须为 0" }
+    MCU_HEARTBEAT:              # MSG_ID 0x81；LENGTH = 22。优先冻结：
+                                # 上位机侧唯一的固件健康通道，IF-05 / IF-06 依赖其 CRC 计数。
+      - { offset: 0,  type: uint32, field: uptime_ms,        unit: ms, note: "MCU 启动后的毫秒数" }
+      - { offset: 4,  type: uint16, field: firmware_version, note: "高 8 位主版本、低 8 位次版本" }
+      - { offset: 6,  type: uint32, field: valid_rx_frames,  note: "累计有效接收帧数" }
+      - { offset: 10, type: uint32, field: crc_error_frames, note: "累计 CRC 错误帧数" }
+      - { offset: 14, type: uint32, field: timeout_count,    note: "累计通信超时次数" }
+      - { offset: 18, type: uint16, field: last_rx_seq,      note: "最近一次有效接收帧的 SEQ" }
+      - { offset: 20, type: uint8,  field: controller_state, note: "0 初始化，1 就绪，2 运行，3 故障" }
+      - { offset: 21, type: uint8,  field: reserved,         note: "保留，必须为 0" }
+    IMU_STATE:                  # MSG_ID 0xA1；LENGTH = 24。传感器为博世 BMI088，经 SPI 接 STM32。
+      - { offset: 0,  type: uint32,   field: mcu_time_ms,  unit: ms, note: "MCU 启动后的毫秒数" }
+      - { offset: 4,  type: "int16[3]", field: accel_mg,   unit: mg, range: "±2000（±2 g）", note: "轴序 x, y, z" }
+      - { offset: 10, type: "int16[3]", field: gyro_mrad_s, unit: "mrad/s", range: "±32767", note: "BMI088 满量程 ±2000 dps（合 ±34.9 rad/s），超出部分按量程饱和；轴序 x, y, z" }
+      - { offset: 16, type: int16,    field: roll_mrad,   unit: mrad }
+      - { offset: 18, type: int16,    field: pitch_mrad,  unit: mrad }
+      - { offset: 20, type: int16,    field: yaw_mrad,    unit: mrad, note: "未做姿态融合时为 0" }
+      - { offset: 22, type: uint8,    field: calibration,  note: "0 未标定，1 已标定，2 标定中" }
+      - { offset: 23, type: uint8,    field: reserved,     note: "保留，必须为 0" }
+    POWER_STATE:                # MSG_ID 0xA2；LENGTH = 16。对应 16S 磷酸铁锂电池组与 100 A BMS。
+      - { offset: 0,  type: uint32, field: mcu_time_ms,    unit: ms }
+      - { offset: 4,  type: uint16, field: bus_voltage_mv, unit: mV, range: "0 ~ 60000（不高于 60 V）", note: "缩放 1 mV。按量程预留，与母线电压定标结果无关，见 T1" }
+      - { offset: 6,  type: int16,  field: current_ma,     unit: mA, note: "放电为正，充电为负" }
+      - { offset: 8,  type: uint8,  field: soc_percent,    unit: "%", range: "0 ~ 100", note: "未知为 0xFF" }
+      - { offset: 9,  type: uint8,  field: reserved,       note: "保留，必须为 0" }
+      - { offset: 10, type: int16,  field: temperature_dc, unit: "0.1 ℃", range: "-400 ~ 1250" }
+      - { offset: 12, type: uint16, field: bms_flags,      note: "bit0 过压，bit1 欠压，bit2 过流，bit3 过温，bit4 充电中，bit5 放电中；其余保留" }
+      - { offset: 14, type: uint8,  field: cell_count,     note: "串数" }
+      - { offset: 15, type: uint8,  field: reserved,       note: "保留，必须为 0" }
+    ULTRASONIC_STATE:           # MSG_ID 0xA4；LENGTH = 6 + 3N。HC-SR04 环形阵列。
+      - { offset: 0, type: uint32,   field: mcu_time_ms,  unit: ms }
+      - { offset: 4, type: uint8,    field: sensor_count, range: "1 ~ 16", note: "本次上报的传感器路数 N" }
+      - { offset: 5, type: uint8,    field: scan_seq,     note: "环形扫描序号，用于判断哪几路在本帧被刷新" }
+      - { offset: 6, type: "uint16[N]", field: range_mm,  unit: mm, note: "按 sensor_names 顺序；未知为 0xFFFF 哨兵，serial_bridge 必须转换为 NaN。sensor_names 命名与顺序未固定前不得发布该话题（T3）" }
+      - { offset: "6+2N", type: "uint8[N]", field: quality, range: "0 ~ 100", note: "各路回波质量，0 表示无有效回波；LENGTH 不足时可缺省，订阅方按未知处理" }
+
+  fault_bits:                   # 标准表 6-7。SafetyStatus.fault_bits 与 StandState.fault_bits
+                                # 共用本表定义；StandState 侧仅 bit7 ACTUATOR_LIMIT 与
+                                # bit8 SENSOR_INVALID 适用，其余位置 0。
+                                # 命名空间另有独立方案（改名 stand_fault_bits 或改 uint8 枚举）
+                                # 见评审报告 REV-001 的 A3。
     - { bit: 0,     name: COMM_TIMEOUT,    level: 严重,      behavior: "速度置零，禁止驱动" }
     - { bit: 1,     name: PHYSICAL_ESTOP,  level: 严重,      behavior: "硬件急停锁存，禁止驱动" }
     - { bit: 2,     name: SOFT_ESTOP,      level: 严重,      behavior: "软件急停锁存，禁止驱动" }
@@ -446,7 +627,8 @@ serial:
     - { bit: 7,     name: ACTUATOR_LIMIT,  level: "警告或严重", behavior: "停止推杆，保留底盘判断" }
     - { bit: 8,     name: SENSOR_INVALID,  level: 警告,      behavior: "标记数据无效并通知上位机" }
     - { bit: 9,     name: CRC_RATE_HIGH,   level: 警告,      behavior: "保持安全限速并检查链路" }
-    - { bits: "10-31", name: RESERVED,     level: 保留,      behavior: "发送端置 0，接收端忽略未知位并记录" }
+    - { bit: 10,    name: WHEEL_STALL,     level: 严重,      behavior: "本版新增。实际轮速与指令持续不符时判定失速，速度置零，禁止驱动，需复位" }
+    - { bits: "11-31", name: RESERVED,     level: 保留,      behavior: "发送端置 0，接收端忽略未知位并记录" }
 
   error_codes:
     - { code: 0, name: OK,             meaning: "命令已接收并通过合法性检查" }
@@ -460,7 +642,7 @@ serial:
     - { code: 8, name: INTERNAL_ERROR, meaning: "固件内部错误" }
 
   timeouts:
-    - "MCU 连续 300 ms 未收到有效 HOST_HEARTBEAT 或 CMD_VEL 时，立即把底盘速度置零。"
+    - "MCU 连续 200 ms 未收到有效 HOST_HEARTBEAT 或 CMD_VEL 时，立即把底盘速度置零。本版由 300 ms 收紧为 200 ms：底盘运动控制单元给出的看门狗指标为 200 ms 内强制停车，按标准 §3.4 第 3 条「以更严格者为准」取严者，IF-07 验收条件同步。"
     - "连续 1000 ms 未收到上位机有效帧时，置 COMM_TIMEOUT 故障并禁止驱动，直至通信恢复且收到合规复位。"
     - "CMD_VEL 不重发旧命令；上位机持续发送最新值。离散命令设 ACK_REQ，100 ms 无响应可重试 2 次。"
     - "重复 SEQ 的离散命令只执行一次，并再次返回相同 ACK。"
@@ -471,3 +653,66 @@ serial:
     hex: "AA 55 01 10 01 2A 00 06 00 C8 00 00 00 C8 00 22 81"
     crc16_modbus: "0x8122"
     note: "低字节先发送"
+
+# -----------------------------------------------------------------------------
+# 已闭环接口变更申请（ICR）
+# 三项已在 V1.0 中裁决并落地，登记于此以备追溯。改动记录与依据见
+# docs/interfaces/各组汇报接口对齐差异清单.md 第 6 节。
+# 流程见标准 §8.4，提交入口 .github/ISSUE_TEMPLATE/icr.yml。
+# -----------------------------------------------------------------------------
+resolved_icrs:
+  - id: ICR-001
+    issue: 2
+    title: "补齐 9 条串口消息的载荷字段表"
+    affects: "serial.message_ids 中 0x01 / 0x11 / 0x12 / 0x13 / 0x7E / 0x81 / 0xA1 / 0xA2 / 0xA4"
+    owner: 电气动力与底层控制组
+    resolved_in: V1.0
+    status: 已裁决
+    resolution: "9 条载荷表已按标准表 6-8 至表 6-17 代拟补齐并写入本表；其中 0x7E ACK_NACK 原草案已有定义，本版仅补偏移列。全部标注「代拟草案，待电气动力与底层控制组确认」，冻结前不得据此实现固件。"
+    remaining: "载荷表的偏移、类型、缩放与哨兵取值需该组按固件实测确认后再转为冻结。"
+
+  - id: ICR-002
+    issue: 3
+    title: "表 3 与第 2 章子系统划分口径统一"
+    affects: "标准表 2-1 子系统与接口责任"
+    owner: 系统集成测试与项目管理组
+    resolved_in: V1.0
+    status: 已裁决
+    resolution: "表 2-1 由 6 行补至 9 行，新增安全监督、仿真、工程管理三行；speed_mux 与 safety_filter 按职责描述归入「系统集成测试与项目管理组」。标准 §4.3 与 §4.5 同步补齐速度复用器与安全过滤器的所有者。"
+    remaining: "所有者归属为架构组裁决结论，需该组会签确认后生效。"
+
+  - id: ICR-003
+    issue: 4
+    title: "/tf 的 QoS 档调整"
+    affects: "topics 中 /tf 条目（qos: SENSOR -> TF）"
+    owner: 自动导航与 SLAM 算法组
+    resolved_in: V1.0
+    status: 已裁决
+    resolution: "不采用原提案的 STATE 档，改为新增 TF 档（RELIABLE / KEEP_LAST 100 / VOLATILE）。可靠性由 BEST_EFFORT 提为 RELIABLE 以满足 tf2_ros 与 RViz 2 订阅端的默认请求；深度取 100 而非 STATE 档的 10，因动态变换以 30-50 Hz 广播，10 帧缓冲不足以覆盖短暂抖动。"
+    remaining: "无。"
+
+# -----------------------------------------------------------------------------
+# 待实测标定项（TBD）—— 标准 §6.8
+# 本版冻结其接口名称与帧结构，但数值依赖硬件选型或实测数据，不代为裁定。
+# -----------------------------------------------------------------------------
+tbd_items:
+  - id: T1
+    title: "母线电压"
+    issue: "底盘组按 24 V 采购电机与电池；动力与供电安全单元建议按 51.2 V（16S 磷酸铁锂）做安全回路验证，两者尚未合流。"
+    owner: 电气动力与底层控制组
+    handling: "POWER_STATE 的 bus_voltage_mv 按 0-60000 mV（不高于 60 V）量程预留，缩放 1 mV；标称值回填不影响帧结构。"
+  - id: T2
+    title: "下位机通信路线"
+    issue: "系统环境配置单元建议短期用 ros2_serial、长期迁移 micro-ROS。"
+    owner: "电气动力与底层控制组、系统环境配置单元"
+    handling: "冻结上位机侧串口帧协议，使其不因传输实现变化而变；micro-ROS 仅作长期评估项，本版不引入任何接口。"
+  - id: T3
+    title: "超声波阵列的数量与命名"
+    issue: "阵列路数与安装方位未定。"
+    owner: 电气动力与底层控制组
+    handling: "RangeArray.sensor_names 的命名与顺序未固定前不得发布 /wheelchair/ultrasonic/ranges。"
+  - id: T4
+    title: "臂端相机型号与手眼外参"
+    issue: "机械臂视觉与抓取控制组倾向臂端用 RealSense D455、轮椅顶部用 OAK-D Pro。"
+    owner: 机械臂视觉与抓取控制组
+    handling: "arm_camera 相关的 frame 名与话题本版先定，外参数值待手眼标定报告回填。"
