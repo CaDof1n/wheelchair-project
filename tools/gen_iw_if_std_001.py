@@ -1503,8 +1503,10 @@ add_code(doc, [
     "float32 position_ratio",
 ], size=8.8)
 add_note(doc, "本附录 6 个消息与 2 个动作已按上述定义写入 wheelchair_interfaces 包，"
-              "但该包尚未在真实 ROS 2 环境完成独立构建，"
-              "状态一律记为「待验证」，不得记为已完成。")
+              "并已于 2026-09-28 在 Ubuntu 22.04.5 LTS + ROS 2 Humble"
+              "（ros:humble-ros-base 容器）中完成独立构建："
+              "colcon build 通过，ros2 interface package 列出 6 个消息与 2 个动作共 8 条，"
+              "colcon test 5 项全部通过。", kind="plain")
 
 # ================================================================ 附录 B
 add_heading(doc, "附录 B 第一版交付检查表", 1)
@@ -1516,8 +1518,9 @@ add_table(doc, ["状态", "交付项", "责任人", "完成标准"], [
      "六大组接口负责人", "完成评审意见并签字或在 Git 留痕"),
     ("已完成（main 与 develop 均受保护，develop 经 PR 合并）",
      "wheelchair-project Git 仓库", "仓库管理员", "main 受保护，develop 可通过 PR 合并"),
-    ("待验证（6 个 msg 与 2 个 action 已定义；Service 复用 std_srvs，"
-     "其中 /arm_controller/follow_joint_trajectory 为新增；独立构建待验证）",
+    ("已完成（6 个 msg 与 2 个 action 已定义；Service 复用 std_srvs，"
+     "其中 /arm_controller/follow_joint_trajectory 为新增；"
+     "2026-09-28 于 Ubuntu 22.04.5 LTS + ROS 2 Humble 独立构建通过）",
      "wheelchair_interfaces ROS 2 包", "接口开发负责人", "msg srv action 可独立构建"),
     ("已完成（Topic／Service／Action／TF／串口全量条目已登记，含本版新增 11 项）",
      "interface_registry.yaml", "接口文档负责人",
