@@ -116,9 +116,12 @@ tbd_items        待实测标定项 T1 ~ T4
 - **「IW-IF-STD-001 评审」记为已完成**——完成标准写的是「完成评审意见并**签字或**
   在 Git 留痕」，二者取一即可，评审报告入库即满足留痕。**各组会签尚未办理**，
   签署页（表 D-1）仍为空，若项目要求纸质或电子签章，需另行走该流程。
-- **「wheelchair_interfaces ROS 2 包」记为待验证而非已完成**——完成标准是
-  「msg srv action 可独立构建」，而本包尚未在真实 ROS 2 环境中执行过
-  `colcon build`（开发机为 Windows，无 ROS 2）。**定义齐全不等于构建通过**。
+- **「wheelchair_interfaces ROS 2 包」已由待验证转为已完成**——2026-09-28 在
+  Ubuntu 22.04.5 LTS + ROS 2 Humble（`ros:humble-ros-base` 容器；本机 CachyOS 无 ROS 2，
+  经 rootless podman 运行）中执行 `colcon build --symlink-install --packages-select
+  wheelchair_interfaces` 通过，`ros2 interface package` 列出 **6 个 msg 与 2 个 action 共 8 条**，
+  `colcon test` 5 项全部通过。过程中另修掉一处 `package.xml` 元素顺序问题
+  （`test_depend` 须在 `member_of_group` 之前，否则 xmllint 判 invalid）。
 
 ## 已知遗留项
 
@@ -136,5 +139,5 @@ V1.0 已处理完毕的项：
 
 - [ ] **各组会签**：表 D-1 签署页为空，ICR-002 的所有者归属需系统集成测试与项目管理组确认。
 - [ ] **T1 ~ T4**：见注册表 `tbd_items`，需硬件选型或实测数据。
-- [ ] **`wheelchair_interfaces` 独立构建验证**：需在装有 ROS 2 Humble 的环境执行。
+- [x] **`wheelchair_interfaces` 独立构建验证**：2026-09-28 于 Ubuntu 22.04.5 LTS + ROS 2 Humble 通过，见上文「交付检查表的状态口径」。
 - [ ] **URDF / XACRO**：尚未提交至 `wheelchair_description`，TF 树初版无法在 RViz 2 实际加载。
