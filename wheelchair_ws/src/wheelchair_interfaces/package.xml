@@ -11,7 +11,7 @@
     字段不得在未发起 ICR 的情况下改序、改名或改单位（标准 §附录A 引言）。
   </description>
 
-  <maintainer email="todo@example.com">第六大组 · 架构与接口规范单元（接口开发负责人待填写）</maintainer>
+  <maintainer email="cadofin@163.com">孔宁伟</maintainer>
   <license>Proprietary</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
@@ -22,10 +22,10 @@
 
   <exec_depend>rosidl_default_runtime</exec_depend>
 
-  <member_of_group>rosidl_interface_packages</member_of_group>
-
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
+
+  <member_of_group>rosidl_interface_packages</member_of_group>
 
   <export>
     <build_type>ament_cmake</build_type>
