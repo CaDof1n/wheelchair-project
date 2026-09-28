@@ -7,7 +7,7 @@
 
 std_msgs/Header header
 
-# 运行模式，与标准表 3「运行模式」一致
+# 运行模式，与标准表 2-2「运行模式」一致
 uint8 INIT=0
 uint8 SIMULATION=1
 uint8 MANUAL=2
