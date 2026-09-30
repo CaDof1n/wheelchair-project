@@ -26,7 +26,7 @@ import yaml
 from docx import Document
 
 ROOT = Path(__file__).resolve().parents[1]
-DOCX = ROOT / "docs" / "interfaces" / "第一版全局软硬件接口标准_V1.0.docx"
+DOCX = ROOT / "docs" / "interfaces" / "第一版全局软硬件接口标准_V1.0.1.docx"
 REGISTRY = ROOT / "docs" / "interfaces" / "interface_registry.yaml"
 
 problems = []

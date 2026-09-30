@@ -1,12 +1,21 @@
 # =============================================================================
 # interface_registry.yaml
-# 全局接口注册表 —— 依据《第一版全局软硬件接口标准》V1.0 (IW-IF-STD-001)
+# 全局接口注册表 —— 依据《第一版全局软硬件接口标准》V1.0.1 (IW-IF-STD-001)
 #
 # 规则（标准 §8.3）：涉及 Topic、Service、Action、TF、串口或参数的改动，
 # 必须同步更新本文件，否则 PR 不予合并。
 #
 # 任何条目变更都必须附带 ICR 编号（见 .github/ISSUE_TEMPLATE/icr.yml）。
 # 禁止在 V1.x 内改变已有字段含义（标准 §1.5 第 4 条）。
+#
+# V1.0.1（第四周）补丁 —— 不改变任何接口字段，仅修正事实与状态，故无需 ICR：
+#   - 母线电压 T1 合流为 24 V 级（8S 磷酸铁锂，标称 25.6 V、满充 29.2 V）：
+#     tbd_items 的 T1 由待定标项转为已合流，标题加「已合流」后缀
+#   - serial.payloads 的 POWER_STATE（0xA2）注释：「16S 磷酸铁锂电池组」系笔误，
+#     16S 对应 51.2 V，24 V 级为 8S
+#   - 图 1 整机通信架构框图同步更正（接触器改 24 V、BMS 改 8S、
+#     隔离 DC-DC 由 5 V 供上位机；原图误画 19 V 直供上位机，
+#     而 D4 已定上位机为香橙派 5，其 Type-C 供电严禁高于 5 V）
 #
 # V1.0（第四周）本表变化 —— 版本号重新起算，与已归档的内部草案无继承关系：
 #   - topics: 新增 /wheelchair/cmd_vel_raw 与 4 条 /arm_camera/* 臂端相机话题；
@@ -24,13 +33,13 @@
 
 meta:
   document_id: IW-IF-STD-001
-  standard_version: V1.0
+  standard_version: V1.0.1
   supersedes: null            # 旧 V1.0 / V1.1 为未协调的内部草案，见 docs/interfaces/archive/README.md
-  registry_version: 1.0.0
+  registry_version: 1.0.1
   updated: 第四周
   owner: 第六大组 · 架构与接口规范单元
   note: "本表由标准表 4-3 / 表 4-4 / 表 5-1 / 第 6 章转录。编号为转录序号，非标准原表号。"
-  revision: "V1.0 正式首发：落地跨组差异裁决 D1-D10、缺口新增 G1-G10、TBD 标记 T1-T4；ICR-001/002/003 全部闭环"
+  revision: "V1.0 正式首发：落地跨组差异裁决 D1-D10、缺口新增 G1-G10、TBD 标记 T1-T4；ICR-001/002/003 全部闭环。V1.0.1 补丁：T1 母线电压合流为 24 V/8S，修正 POWER_STATE 注释中的 16S 笔误，图 1 同步更正"
 
 # -----------------------------------------------------------------------------
 # NaN 语义（标准 §3.2）
@@ -595,7 +604,7 @@ serial:
       - { offset: 20, type: int16,    field: yaw_mrad,    unit: mrad, note: "未做姿态融合时为 0" }
       - { offset: 22, type: uint8,    field: calibration,  note: "0 未标定，1 已标定，2 标定中" }
       - { offset: 23, type: uint8,    field: reserved,     note: "保留，必须为 0" }
-    POWER_STATE:                # MSG_ID 0xA2；LENGTH = 16。对应 16S 磷酸铁锂电池组与 100 A BMS。
+    POWER_STATE:                # MSG_ID 0xA2；LENGTH = 16。对应 8S 磷酸铁锂电池组（标称 25.6 V、满充 29.2 V）。
       - { offset: 0,  type: uint32, field: mcu_time_ms,    unit: ms }
       - { offset: 4,  type: uint16, field: bus_voltage_mv, unit: mV, range: "0 ~ 60000（不高于 60 V）", note: "缩放 1 mV。按量程预留，与母线电压定标结果无关，见 T1" }
       - { offset: 6,  type: int16,  field: current_ma,     unit: mA, note: "放电为正，充电为负" }
@@ -697,10 +706,10 @@ resolved_icrs:
 # -----------------------------------------------------------------------------
 tbd_items:
   - id: T1
-    title: "母线电压"
-    issue: "底盘组按 24 V 采购电机与电池；动力与供电安全单元建议按 51.2 V（16S 磷酸铁锂）做安全回路验证，两者尚未合流。"
+    title: "母线电压（已合流）"
+    issue: "已确定为 24 V 级：8S 磷酸铁锂，标称 25.6 V、满充 29.2 V。动力与供电安全单元已按此重出采购清单，原 51.2 V（16S）方案作废。"
     owner: 电气动力与底层控制组
-    handling: "POWER_STATE 的 bus_voltage_mv 按 0-60000 mV（不高于 60 V）量程预留，缩放 1 mV；标称值回填不影响帧结构。"
+    handling: "自 V1.0.1 起由待定标项转为已合流，仅余峰值电流等数值待底盘组回填，不影响帧结构。bus_voltage_mv 的 0-60000 mV（不高于 60 V）量程为预留设计，与标称值无关。"
   - id: T2
     title: "下位机通信路线"
     issue: "系统环境配置单元建议短期用 ros2_serial、长期迁移 micro-ROS。"

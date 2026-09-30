@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-IW-IF-STD-001 《第一版全局软硬件接口标准》V1.0 生成脚本
+IW-IF-STD-001 《第一版全局软硬件接口标准》V1.0.1 生成脚本
 第六大组 · 架构与接口规范单元
 
 用法（在仓库根目录执行）：
     python tools/gen_iw_if_std_001.py
 输出：
-    docs/interfaces/第一版全局软硬件接口标准_V1.0.docx
+    docs/interfaces/第一版全局软硬件接口标准_V1.0.1.docx
 
 改动正文后须同时更新 docs/interfaces/interface_registry.yaml（标准 §8.3），
 并跑一遍 tools/check_iw_if_std_001.py 校验题注、引用与排版。
@@ -21,7 +21,7 @@ from docx.oxml.ns import qn
 from docx.shared import Cm, Pt, RGBColor, Inches
 
 OUT = (Path(__file__).resolve().parents[1] /
-       "docs" / "interfaces" / "第一版全局软硬件接口标准_V1.0.docx")
+       "docs" / "interfaces" / "第一版全局软硬件接口标准_V1.0.1.docx")
 
 BLACK = "000000"; NAVY = "17365D"; MID_BLUE = "2F5597"
 PALE_GRAY = "F5F7FA"; LIGHT_GRAY = "D9D9D9"; WHITE = "FFFFFF"
@@ -323,7 +323,7 @@ if dd is not None:
 _hp = section.header.paragraphs[0]
 _hp.alignment = WD_ALIGN_PARAGRAPH.RIGHT
 set_paragraph_format(_hp, after=0)
-font_run(_hp.add_run("智能辅助轮椅项目  全局接口标准  V1.0"), size=8.5,
+font_run(_hp.add_run("智能辅助轮椅项目  全局接口标准  V1.0.1"), size=8.5,
          color="666666")
 _ft = section.footer.add_table(rows=1, cols=2, width=Inches(6.6))
 _ft.autofit = False
@@ -351,7 +351,7 @@ font_run(sub.add_run("ROS 2  TF 坐标系  串口通信  网络与版本管理")
 
 add_table(doc, ["项目", "内容"], [
     ("文档编号", "IW-IF-STD-001"),
-    ("版本", "V1.0"),
+    ("版本", "V1.0.1"),
     ("状态", "正式发布稿"),
     ("编制单位", "第六大组 · 架构与接口规范单元"),
     ("适用项目", "基于数字孪生的多功能智能辅助轮椅研发与集成"),
@@ -390,6 +390,18 @@ add_table(doc, ["角色", "责任", "签名或负责人", "日期"], [
 
 add_caption(doc, "表 1-3  版本记录")
 add_table(doc, ["版本", "日期", "变更内容", "编制"], [
+    ("V1.0.1", "第四周",
+     "补丁版。不改变任何接口字段，仅修正文档事实与状态："
+     "① 母线电压 T1 合流为 24 V 级（8S 磷酸铁锂，标称 25.6 V、满充 29.2 V），"
+     "T1 由待定标项转为已合流，6.8 节标题相应改名；"
+     "② 修正 POWER_STATE（0xA2）注释中「16S 磷酸铁锂电池组」的笔误——"
+     "16S 对应 51.2 V，24 V 级为 8S；"
+     "③ 图 1 同步更正：接触器改 24 V 线圈、BMS 改 8S、"
+     "隔离 DC-DC 供电改由 5 V 支路供上位机（原图误画 19 V 直供上位机，"
+     "而 D4 已定上位机为香橙派 5，其 Type-C 供电严禁高于 5 V）。"
+     "bus_voltage_mv 的 0–60000 mV 量程为预留设计，与母线电压标称值无关，"
+     "故本补丁无需 ICR。",
+     "第六大组 · 架构与接口规范单元"),
     ("V1.0", "第四周",
      "正式第一版。以五组已完成的方案汇报为输入，对内部草案逐条对表后重出："
      "裁决 ROS 2 发行版、SLAM 框架、坐标系命名、上位机平台、串口链路拓扑、"
@@ -608,7 +620,7 @@ add_heading(doc, "4 ROS 2 接口标准", 1)
 
 add_heading(doc, "4.1 环境基线", 2)
 add_caption(doc, "表 4-1  环境基线")
-add_table(doc, ["项目", "V1.0 约定"], [
+add_table(doc, ["项目", "本版约定"], [
     ("操作系统", "Ubuntu 22.04 LTS"),
     ("ROS 2",
      "Humble 为集成基线，不考虑 Iron 兼容。机械臂组资料中的 Jazzy 系上游项目"
@@ -869,7 +881,7 @@ add_text(doc, "上位机与下位机之间为两级链路。上位机与 ESP32 �
               "ESP32 必须把 STM32 的遥测按 6.3 节的 MCU 到 HOST 消息透传，"
               "并以 serial_bridge 作为 ROS 2 侧的唯一端点。")
 add_caption(doc, "表 6-1  串口物理层参数")
-add_table(doc, ["参数", "V1.0 约定"], [
+add_table(doc, ["参数", "本版约定"], [
     ("接口", "USB CDC 或 USB 转 UART；实物布线较长时可使用隔离 RS-485"),
     ("波特率", "115200 bit/s"),
     ("数据格式", "8 数据位，1 停止位，无校验，8N1"),
@@ -1096,8 +1108,8 @@ add_table(doc, ["偏移", "类型", "字段", "单位与量程"], [
     ("15", "uint8", "reserved", "保留，必须为 0"),
 ], [1.3, 2.0, 3.5, 10.4], font_size=8.4)
 add_note(doc, "LENGTH = 16。代拟草案，待电气动力与底层控制组确认。"
-              "母线电压的标称值本身为待定项，见 6.8 节 T1。"
-              "该消息对应 16S 磷酸铁锂电池组与 100 A BMS 的遥测方案。")
+              "该消息对应 8S 磷酸铁锂电池组（标称 25.6 V、满充 29.2 V）的遥测方案。"
+              "母线电压的标称值见 6.8 节 T1。")
 
 add_caption(doc, "表 6-17  ULTRASONIC_STATE 载荷（MSG_ID 0xA4，MCU 到上位机，50 Hz）")
 add_table(doc, ["偏移", "类型", "字段", "单位与说明"], [
@@ -1147,13 +1159,14 @@ add_text(doc, f"CRC-16/MODBUS = 0x{_crc:04X}，低字节先发送。"
               "与表 6-2 的覆盖范围一致。")
 
 add_heading(doc, "6.8 待定标项（TBD）", 2)
-add_text(doc, "以下四项依赖硬件选型、实测数据或采购结论，本版不代为裁定，"
+add_text(doc, "以下三项依赖硬件选型、实测数据或采购结论，本版不代为裁定，"
               "但先冻结其接口名称与帧结构，避免后续返工。")
 for t in [
-    "T1 母线电压。底盘组按 24 V 采购电机与电池，动力与供电安全单元建议按 51.2 V"
-    "（16S 磷酸铁锂）做安全回路验证，两者尚未合流。解除条件：由峰值电流、线束长度"
-    "与驱动器电容共同定标。本版已把 POWER_STATE 的电压字段按不高于 60 V 量程预留，"
-    "缩放 1 mV，标称值回填不影响帧结构。责任组：电气动力与底层控制组。",
+    "T1 母线电压（已合流）。已确定为 24 V 级，8S 磷酸铁锂，标称 25.6 V、满充 29.2 V；"
+    "动力与供电安全单元已按此重出采购清单，原 51.2 V（16S）方案作废。"
+    "该项自 V1.0.1 起由待定标项转为已合流，仅余峰值电流等数值待底盘组回填，"
+    "不影响任何帧结构。POWER_STATE 的电压字段仍按不高于 60 V 量程预留，缩放 1 mV——"
+    "该量程为预留设计，与标称值无关。责任组：电气动力与底层控制组。",
     "T2 下位机通信路线。系统环境配置单元建议短期用 ros2_serial、长期迁移 micro-ROS。"
     "本版冻结上位机侧的串口帧协议，使其不因传输实现变化而变；micro-ROS 仅作长期"
     "评估项，本版不引入任何接口。责任组：电气动力与底层控制组、系统环境配置单元。",
@@ -1604,7 +1617,7 @@ add_table(doc, ["大组", "接口负责人", "评审结论", "日期", "备注"]
     ("系统集成测试与项目管理组", "", "同意  有条件同意  退回", "", ""),
 ], [4.4, 2.6, 4.4, 2.2, 3.6], font_size=8.0)
 add_text(doc, "编制单位：第六大组 · 架构与接口规范单元　　"
-              "文档编号：IW-IF-STD-001　　版本：V1.0　　发布日期：第四周")
+              "文档编号：IW-IF-STD-001　　版本：V1.0.1　　发布日期：第四周")
 
 doc.save(OUT)
 print("saved ->", OUT)
