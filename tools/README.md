@@ -9,6 +9,7 @@
 | 工具 | 用途 |
 |---|---|
 | `gen_iw_if_std_001.py` | **已入库**。生成《第一版全局软硬件接口标准》V1.0 的 docx。改动正文后重跑本脚本，并同步注册表 |
+| `make_arch_figure.py` | **已入库**。生成标准图 1 整机通信架构框图（PNG 300 dpi + SVG）。改图后须重跑 `gen_iw_if_std_001.py`，正文嵌入的图才会更新 |
 | `check_iw_if_std_001.py` | **已入库**。一致性校验：题注完整性、表/图引用可解析、正文与注册表交叉比对、示例帧 CRC 复算 |
 | `ros_container_build.sh` | **已入库**。在容器（`ros:humble-ros-base`）里构建并验证 ROS 2 包：宿主机没有 ROS 2 时用。`src` 只读挂载，产物不落回仓库 |
 | `render_office_pdf.ps1` | **已入库**。用本机 Word / PowerPoint 把 docx / pptx 导出为 PDF（只读打开源文件），供渲染检查用。需要 Windows + Office |
@@ -24,6 +25,7 @@
 ```bash
 python tools/gen_iw_if_std_001.py      # 重新生成标准正文 docx
 python tools/check_iw_if_std_001.py    # 校验正文与注册表是否一致（退出码非 0 即不一致）
+python tools/make_arch_figure.py       # 重新生成图 1（需 matplotlib 与微软雅黑/黑体字体）
 
 tools/ros_container_build.sh                       # 容器内构建并验证 wheelchair_interfaces
 tools/ros_container_build.sh wheelchair_base       # 指定包（可多个）
