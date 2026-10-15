@@ -52,6 +52,12 @@ def set_repeat_table_header(row):
     el = OxmlElement("w:tblHeader"); el.set(qn("w:val"), "true"); tr_pr.append(el)
 
 
+def set_cant_split(row):
+    """行不跨页断开，避免页底只剩半行、续页顶端只剩一两个字的碎片。"""
+    tr_pr = row._tr.get_or_add_trPr()
+    tr_pr.append(OxmlElement("w:cantSplit"))
+
+
 def set_table_borders(table, color=LIGHT_GRAY, size="6"):
     tbl_pr = table._tbl.tblPr
     borders = tbl_pr.find(qn("w:tblBorders"))
@@ -198,7 +204,9 @@ def add_table(doc, headers, rows, widths, font_size=8.4, first_col_bold=False,
             set_word_wrap(p, char_level=False)
         font_run(p.add_run(str(text)), size=font_size, bold=True, color=WHITE)
     for ridx, row in enumerate(rows):
-        cells = table.add_row().cells
+        new_row = table.add_row()
+        set_cant_split(new_row)
+        cells = new_row.cells
         for i, value in enumerate(row):
             cell = cells[i]
             set_cell_width(cell, widths[i]); set_cell_margins(cell)
@@ -398,7 +406,9 @@ add_table(doc, ["版本", "日期", "变更内容", "编制"], [
      "16S 对应 51.2 V，24 V 级为 8S；"
      "③ 图 1 同步更正：接触器改 24 V 线圈、BMS 改 8S、"
      "隔离 DC-DC 供电改由 5 V 支路供上位机（原图误画 19 V 直供上位机，"
-     "而 D4 已定上位机为香橙派 5，其 Type-C 供电严禁高于 5 V）。"
+     "而 D4 已定上位机为香橙派 5，其 Type-C 供电严禁高于 5 V）；"
+     "④ 附录 A 注记与表 B-1 更新接口包状态：wheelchair_interfaces 已于 2026-09-28 "
+     "在 Ubuntu 22.04 + ROS 2 Humble 中独立构建通过，由「待验证」改为「已完成」。"
      "bus_voltage_mv 的 0–60000 mV 量程为预留设计，与母线电压标称值无关，"
      "故本补丁无需 ICR。",
      "第六大组 · 架构与接口规范单元"),
