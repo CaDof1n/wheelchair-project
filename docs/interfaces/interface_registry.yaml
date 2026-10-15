@@ -16,6 +16,13 @@
 #   - 图 1 整机通信架构框图同步更正（接触器改 24 V、BMS 改 8S、
 #     隔离 DC-DC 由 5 V 供上位机；原图误画 19 V 直供上位机，
 #     而 D4 已定上位机为香橙派 5，其 Type-C 供电严禁高于 5 V）
+#   - 与标准正文逐字段对齐（本表是正文的转录，以正文为准；均为描述性字段，
+#     名称、类型与 QoS 未变）：/wheelchair/cmd_vel/teleop 发布方补「ESP32 网关」（D5）；
+#     /arm_camera/* 订阅方按表 4-3 改写，depth/points 补 frame；
+#     /wheelchair/arm/wrench 发布方、频率写法与 frame_id=arm_link_6 按表 4-3；
+#     /tf 频率写「按表 5-2」；0xA3 频率写「10 Hz 加事件」；odom、base_footprint 的
+#     发布方按表 5-1 写法（「二选一」约束仍见 tf_ownership）。
+#     tools/check_iw_if_std_001.py 自本版起逐项比对类型、频率、QoS 等关键字段
 #
 # V1.0（第四周）本表变化 —— 版本号重新起算，与已归档的内部草案无继承关系：
 #   - topics: 新增 /wheelchair/cmd_vel_raw 与 4 条 /arm_camera/* 臂端相机话题；
@@ -92,7 +99,7 @@ topics:
 
   - name: /wheelchair/cmd_vel/teleop
     type: geometry_msgs/msg/Twist
-    pub: [手柄节点]
+    pub: [手柄节点（ESP32 网关）]
     sub: [速度复用器]
     rate: "20 Hz"
     qos: CONTROL
@@ -203,7 +210,7 @@ topics:
   - name: /arm_camera/color/image_raw
     type: sensor_msgs/msg/Image
     pub: [臂端相机驱动]
-    sub: [抓取视觉]
+    sub: [手眼标定, 抓取]
     rate: "15-30 Hz"
     qos: SENSOR
     frame: arm_camera_color_optical_frame
@@ -212,7 +219,7 @@ topics:
   - name: /arm_camera/color/camera_info
     type: sensor_msgs/msg/CameraInfo
     pub: [臂端相机驱动]
-    sub: [抓取视觉]
+    sub: [手眼标定]
     rate: "随图像"
     qos: STATE
     note: "本版新增。臂端相机内参与畸变参数。"
@@ -220,7 +227,7 @@ topics:
   - name: /arm_camera/depth/image_rect_raw
     type: sensor_msgs/msg/Image
     pub: [臂端相机驱动]
-    sub: [抓取视觉]
+    sub: [目标定位]
     rate: "15-30 Hz"
     qos: SENSOR
     note: "本版新增。深度单位由 encoding 确定。"
@@ -228,18 +235,20 @@ topics:
   - name: /arm_camera/depth/points
     type: sensor_msgs/msg/PointCloud2
     pub: [臂端相机驱动]
-    sub: [抓取规划, 碰撞场景]
+    sub: [抓取规划]
     rate: "5-15 Hz"
     qos: SENSOR
+    frame: arm_camera_depth_optical_frame
     note: "本版新增。可按算力降频。"
 
   - name: /wheelchair/arm/wrench
     type: geometry_msgs/msg/WrenchStamped
-    pub: [力传感器驱动]
+    pub: [力矩传感器驱动]
     sub: [抓取执行节点, 安全监督]
-    rate: "100 Hz 或按传感器"
+    rate: "100 Hz（可降频）"
     qos: SENSOR
-    note: "本版新增。机械臂组的六维力传感器（候选 FT300 ±300 N / 100 Hz，或 ATI Mini45 ±580 N / 7 kHz）原本无对应话题，抓取力控与碰撞保护无法接入。frame_id 应为力传感器测量原点。"
+    frame: arm_link_6
+    note: "本版新增。机械臂组的六维力传感器（候选 FT300 ±300 N / 100 Hz，或 ATI Mini45 ±580 N / 7 kHz）原本无对应话题，抓取力控与碰撞保护无法接入。frame_id=arm_link_6，传感器型号与量程待定标。"
 
   - name: /map
     type: nav_msgs/msg/OccupancyGrid
@@ -313,7 +322,7 @@ topics:
     type: tf2_msgs/msg/TFMessage
     pub: ["各动态 TF 唯一所有者"]
     sub: [全系统]
-    rate: "见标准 §5.1"
+    rate: "按表 5-2"
     qos: TF
     note: "禁止重复发布同一变换。QoS 档已由 SENSOR 改为本节新增的 TF 档（RELIABLE / KEEP_LAST 100 / VOLATILE），闭环 ICR-003：tf2_ros 与 RViz 2 订阅端默认按 RELIABLE 请求，原 SENSOR 档为 BEST_EFFORT，可靠性低于订阅端请求时连接无法建立，会导致 view_frames 与 IF-04 验收失败。"
 
@@ -387,14 +396,14 @@ tf_frames:
   - frame: odom
     parent: map
     meaning: 局部连续里程计坐标系
-    publisher: "SLAM 或定位节点（二选一）"
+    publisher: "SLAM 或定位节点"
     type: "5-20 Hz"
     constraint: "map 与 odom 职责不得交换：map 可全局校正，odom 必须局部连续。"
 
   - frame: base_footprint
     parent: odom
     meaning: 车体在地面的投影，z=0
-    publisher: "robot_localization EKF 或底盘里程计（二选一）"
+    publisher: "EKF 或底盘里程计"
     type: "30 Hz"
     constraint: "连续无跳变，时间戳新鲜。"
 
@@ -535,7 +544,7 @@ serial:
     - { id: "0xA0", name: BASE_STATE,        dir: "MCU->HOST", rate: "30 Hz",   use: "里程计、速度和四轮速度" }
     - { id: "0xA1", name: IMU_STATE,         dir: "MCU->HOST", rate: "50 Hz",   use: "加速度、角速度和姿态" }
     - { id: "0xA2", name: POWER_STATE,       dir: "MCU->HOST", rate: "1 Hz",    use: "电池电压、电流、SOC 和温度" }
-    - { id: "0xA3", name: SAFETY_STATE,      dir: "MCU->HOST", rate: "10 Hz +事件", use: "急停、限位、倾角和故障位" }
+    - { id: "0xA3", name: SAFETY_STATE,      dir: "MCU->HOST", rate: "10 Hz 加事件", use: "急停、限位、倾角和故障位" }
     - { id: "0xA4", name: ULTRASONIC_STATE,  dir: "MCU->HOST", rate: "50 Hz（下限 10 Hz）", use: "超声波距离数组" }
 
   payloads:

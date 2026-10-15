@@ -10,7 +10,9 @@ IW-IF-STD-001 一致性校验工具
   1. 题注完整性：文档内表格对象数 == 「表 N-M」题注条数
   2. 引用可解析：正文与表格中出现的每个「表 N-M」「图 N」都能找到对应题注
   3. 注册表交叉比对：标准正文抽出的 Topic / Service / Action / TF frame
-     与 interface_registry.yaml 完全一致
+     与 interface_registry.yaml 完全一致；并逐项比对关键字段——Topic 的类型、
+     频率与 QoS，Service / Action 的类型与服务端，frame 的父坐标系与发布方，
+     串口消息的名称、方向与频率（忽略空白与全角括号差异）
   4. 示例帧复算：按 §6.6 帧结构重算 CRC-16/MODBUS，与注册表登记值比对
 
 排版相关的检查（溢出、长词换行位置）依赖 Word/PowerPoint 渲染结果，
@@ -39,6 +41,24 @@ def fail(msg):
 
 def ok(msg):
     print("  [v] " + msg)
+
+
+def norm(s):
+    """字段比对用：去空白，全角括号转半角，省略号统一为 .."""
+    s = re.sub(r"\s+", "", str(s or ""))
+    return s.replace("（", "(").replace("）", ")").replace("…", "..")
+
+
+def find_table(doc, caption):
+    """返回题注段落之后的第一张表；找不到返回 None。"""
+    kids = list(doc.element.body)
+    for i, el in enumerate(kids):
+        if el.tag.endswith("}p") and el.xpath("string(.)").strip().startswith(caption):
+            for nxt in kids[i + 1:]:
+                if nxt.tag.endswith("}tbl"):
+                    return [x for x in doc.tables if x._tbl is nxt][0]
+            return None
+    return None
 
 
 # ---------------------------------------------------------------- 1 题注与引用
@@ -103,21 +123,8 @@ def check_registry(text, cap_tbl):
 
     def cells_of(caption):
         """返回题注所在表格之后第一张表的全部单元格文本。"""
-        body = doc.element.body
-        kids = list(body)
-        idx = None
-        for i, el in enumerate(kids):
-            if el.tag.endswith("}p"):
-                if el.xpath("string(.)").strip().startswith(caption):
-                    idx = i
-                    break
-        if idx is None:
-            return None
-        for el in kids[idx + 1:]:
-            if el.tag.endswith("}tbl"):
-                t = [x for x in doc.tables if x._tbl is el][0]
-                return [c.text.strip() for r in t.rows for c in r.cells]
-        return None
+        t = find_table(doc, caption)
+        return None if t is None else [c.text.strip() for r in t.rows for c in r.cells]
 
     t43 = cells_of("表 4-3")
     t44 = cells_of("表 4-4")
@@ -180,6 +187,66 @@ def check_registry(text, cap_tbl):
             fail("表 6-3 缺少注册表中的 MSG_ID：%s" % "、".join(miss))
         else:
             ok("表 6-3 覆盖注册表全部 %d 条消息编号" % len(ids))
+
+
+# ---------------------------------------------------------------- 2b 字段比对
+def check_fields():
+    """注册表是正文的转录，除名称外关键字段也须一致。
+    发布方 / 订阅方是描述性文字，正文与注册表措辞不同（「与」「或」「、」），不比对。"""
+    print("\n[2b] 关键字段逐项比对")
+    reg = yaml.safe_load(REGISTRY.read_text(encoding="utf-8"))
+    doc = Document(str(DOCX))
+
+    def rows(caption):
+        t = find_table(doc, caption)
+        if t is None:
+            return {}
+        return {norm(r.cells[0].text): [c.text.strip() for c in r.cells]
+                for r in t.rows[1:]}
+
+    def compare(label, pairs):
+        diffs = ["%s 的%s：注册表「%s」，正文「%s」" % (name, field, a, b)
+                 for name, field, a, b in pairs if norm(a) != norm(b)]
+        if diffs:
+            fail("%s 有 %d 处不一致：%s" % (label, len(diffs), "；".join(diffs)))
+        else:
+            ok("%s 与注册表逐项一致（%d 项）" % (label, len(pairs)))
+
+    # 缺行已在 [2] 报告，这里只比对两边都有的条目
+    t43, pairs = rows("表 4-3"), []
+    for x in reg["topics"]:
+        r = t43.get(norm(x["name"]))
+        if r:
+            pairs += [(x["name"], "类型", x["type"], r[1]),
+                      (x["name"], "频率", x["rate"], r[4]),
+                      (x["name"], "QoS", x["qos"], r[5])]
+    compare("表 4-3 的类型 / 频率 / QoS", pairs)
+
+    t44, pairs = rows("表 4-4"), []
+    for key, kind in (("services", "Service"), ("actions", "Action")):
+        for x in reg[key]:
+            r = t44.get(norm(x["name"]))
+            if r:
+                pairs += [(x["name"], "种类与类型", kind + " " + x["type"], r[1]),
+                          (x["name"], "服务端", x["server"], r[2])]
+    compare("表 4-4 的种类、类型与服务端", pairs)
+
+    t51, pairs = rows("表 5-1"), []
+    for x in reg["tf_frames"]:
+        r = t51.get(norm(x["frame"]))
+        if r:
+            pairs += [(x["frame"], "父坐标系", x["parent"] or "无", r[1]),
+                      (x["frame"], "发布方", x["publisher"], r[3])]
+    compare("表 5-1 的父坐标系与发布方", pairs)
+
+    t63, pairs = rows("表 6-3"), []
+    for x in reg["serial"]["message_ids"]:
+        r = t63.get(norm(x["id"]))
+        if r:
+            pairs += [(x["id"], "名称", x["name"], r[1]),
+                      (x["id"], "方向", x["dir"].replace("HOST", "上位机"), r[2]),
+                      (x["id"], "频率", x["rate"], r[3])]
+    compare("表 6-3 的名称、方向与频率", pairs)
 
 
 # ---------------------------------------------------------------- 3 示例帧复算
@@ -253,6 +320,7 @@ if __name__ == "__main__":
         sys.exit(1)
     text, cap = check_captions(Document(str(DOCX)))
     check_registry(text, cap)
+    check_fields()
     check_example_frame()
 
     print("\n" + "=" * 56)
