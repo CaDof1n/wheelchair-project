@@ -1,5 +1,5 @@
 # RangeArray.msg
-# 标准 §附录A.3  —  发布方：串口桥 / 频率：10 Hz / QoS：SENSOR
+# 标准 §附录A.3  —  发布方：串口桥 / 频率：50 Hz（下限 10 Hz）/ QoS：SENSOR
 # 对应话题 /wheelchair/ultrasonic/ranges
 # 按传感器名与距离数组成对发布，sensor_names 与 ranges_m 长度必须一致。
 

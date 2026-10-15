@@ -13,7 +13,7 @@
 | `/wheelchair/base/odom` | 发布 | 30 Hz，`frame_id=odom` |
 | `/wheelchair/base/mcu_state` | 发布 | 10 Hz，`wheelchair_interfaces/msg/McuState` |
 | `/wheelchair/imu/data` | 发布 | 50 Hz，`frame_id=imu_link` |
-| `/wheelchair/ultrasonic/ranges` | 发布 | 10 Hz |
+| `/wheelchair/ultrasonic/ranges` | 发布 | 50 Hz（下限 10 Hz），`RangeArray`；`sensor_names` 命名与顺序未固定前不得发布（T3） |
 | `/wheelchair/power/battery_state` | 发布 | 1 Hz |
 
 串口协议见 `docs/interfaces/interface_registry.yaml` 的 `serial` 段，或标准 §6。
@@ -28,7 +28,7 @@
 
 | 条件 | 行为 |
 |---|---|
-| MCU 连续 **300 ms** 未收到有效 `HOST_HEARTBEAT` 或 `CMD_VEL` | 立即把底盘速度置零 |
+| MCU 连续 **200 ms** 未收到有效 `HOST_HEARTBEAT` 或 `CMD_VEL` | 立即把底盘速度置零（V1.0 起由 300 ms 收紧，D6） |
 | 连续 **1000 ms** 未收到上位机有效帧 | 置 `COMM_TIMEOUT` 并禁止驱动，直至收到合规复位 |
 | `CMD_VEL` | **不重发**旧命令；上位机持续发送最新值 |
 | 离散命令（配置/推杆/急停/使能） | 设 `ACK_REQ`，100 ms 无响应可重试 2 次 |
@@ -39,6 +39,6 @@
 
 - **IF-05** 连续 10000 帧无解析错误，字段缩放一致
 - **IF-06** CRC、超长、截断帧被丢弃且不执行
-- **IF-07** 300 ms 内速度归零，1000 ms 内进入通信故障
+- **IF-07** 200 ms 内速度归零，1000 ms 内进入通信故障
 
 编解码测试位于 `tests/interface/`。

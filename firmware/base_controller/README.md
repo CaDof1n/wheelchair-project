@@ -49,8 +49,8 @@ ESP32 / STM32 下位机固件。负责电机驱动、推杆控制、限位采集
 | `0xA0` | BASE_STATE | MCU -> HOST | 30 Hz |
 | `0xA1` | IMU_STATE | MCU -> HOST | 50 Hz |
 | `0xA2` | POWER_STATE | MCU -> HOST | 1 Hz |
-| `0xA3` | SAFETY_STATE | MCU -> HOST | 10 Hz + 事件 |
-| `0xA4` | ULTRASONIC_STATE | MCU -> HOST | 10 Hz |
+| `0xA3` | SAFETY_STATE | MCU -> HOST | 10 Hz 加事件 |
+| `0xA4` | ULTRASONIC_STATE | MCU -> HOST | 50 Hz（下限 10 Hz） |
 
 ## CMD_VEL 载荷
 
@@ -64,7 +64,7 @@ ESP32 / STM32 下位机固件。负责电机驱动、推杆控制、限位采集
 
 - **安全上限必须同时在上位机安全过滤器和本固件中限制，以更严格者为准**（标准 §3.4 第 3 条）。
   固件常量命名规则：大写 snake_case，例 `MAX_LINEAR_MM_S`（标准表 6）。
-- 连续 **300 ms** 未收到有效 `HOST_HEARTBEAT` 或 `CMD_VEL` -> **立即把底盘速度置零**。
+- 连续 **200 ms** 未收到有效 `HOST_HEARTBEAT` 或 `CMD_VEL` -> **立即把底盘速度置零**（V1.0 起由 300 ms 收紧，裁决 D6，取底盘运动控制单元「200 ms 内强制停车」的严者）。
 - 连续 **1000 ms** 未收到上位机有效帧 -> 置 `COMM_TIMEOUT` 并**禁止驱动**，直至通信恢复且收到合规复位。
 - 自检未通过时**拒绝** `CMD_OUTPUT_ENABLE`。
 - **物理急停链路必须独立于上位机和 ROS 2**，硬件断能或禁止驱动，
@@ -84,7 +84,7 @@ AA 55 01 10 01 2A 00 06 00 C8 00 00 00 C8 00 22 81
 
 - **IF-05** 连续 10000 帧无解析错误，字段缩放一致
 - **IF-06** CRC、超长、截断帧被丢弃且不执行
-- **IF-07** 300 ms 内速度归零，1000 ms 内进入通信故障
+- **IF-07** 200 ms 内速度归零，1000 ms 内进入通信故障
 - **IF-08** 物理急停独立生效，ROS 状态正确锁存
 
 ## 待办
