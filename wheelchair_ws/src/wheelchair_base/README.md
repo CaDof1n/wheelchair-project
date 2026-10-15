@@ -14,14 +14,18 @@
 | `/wheelchair/base/mcu_state` | 发布 | 10 Hz，`wheelchair_interfaces/msg/McuState` |
 | `/wheelchair/imu/data` | 发布 | 50 Hz，`frame_id=imu_link` |
 | `/wheelchair/ultrasonic/ranges` | 发布 | 50 Hz（下限 10 Hz），`RangeArray`；`sensor_names` 命名与顺序未固定前不得发布（T3） |
-| `/wheelchair/power/battery_state` | 发布 | 1 Hz |
+| `/wheelchair/power/battery_state` | 发布 | 1 Hz，`sensor_msgs/msg/BatteryState` |
+| `/joint_states` | 发布 | 30 Hz，轮子关节；名称须与 URDF 一致（机械臂关节由机械臂驱动发布） |
+| `/wheelchair/cmd_vel/teleop` | 发布 | 20 Hz，手柄节点（ESP32 网关，D5）；人工接管优先级高于导航 |
+| `/wheelchair/stand/state` | 发布 | 10 Hz，`StandState`（推杆控制节点） |
+| `/wheelchair/stand/change_posture` | Action 服务端 | `ChangePosture`（推杆控制节点）；执行期间底盘必须锁止 |
 
 串口协议见 `docs/interfaces/interface_registry.yaml` 的 `serial` 段，或标准 §6。
 
 ## 硬性约束
 
-- **禁止**绕过急停或接收未过滤速度（标准表 4「底层控制」禁止事项）。
-- **禁止**硬编码串口号：必须通过参数 `serial_port` 和 `baud_rate` 配置（标准表 13）。
+- **禁止**绕过急停或接收未过滤速度（标准表 2-1「禁止事项」）。
+- **禁止**硬编码串口号：必须通过参数 `serial_port` 和 `baud_rate` 配置（标准表 6-1）。
 - 端口配置不得出现 `COM*` 或 `/dev/*` 字面量。
 
 ## 超时与失效安全（标准 §6.6）

@@ -8,7 +8,7 @@
 
 | 编号 | 验收项 | 通过条件 | 证据 | 状态 |
 |---|---|---|---|---|
-| IF-01 | 接口包构建 | `wheelchair_interfaces` 在干净工作空间 `colcon build` 成功 | 构建日志 | ⬜ |
+| IF-01 | 接口包构建 | `wheelchair_interfaces` 在干净工作空间 `colcon build` 成功 | 构建日志（PR #8；此后每个 PR 由 CI 自动重跑） | ✅ |
 | IF-02 | Topic 名称与类型 | `ros2 topic list/type` 与注册表一致，无重复私有替代接口 | 命令输出 | ⬜ |
 | IF-03 | QoS 兼容 | 所有订阅连接成功，无 QoS incompatibility 警告 | 节点日志 | ⬜ |
 | IF-04 | TF 完整性 | TF 单树连通、唯一发布、时间戳有效 | `view_frames` 与 `tf2_echo` | ⬜ |

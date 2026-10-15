@@ -9,12 +9,21 @@
 | 接口 | 角色 | 说明 |
 |---|---|---|
 | `/wheelchair/cmd_vel/nav` `/teleop` `/task` | 订阅 | 三路速度源的复用输入 |
+| `/wheelchair/cmd_vel/task` | 发布 | 状态机，按需 20 Hz，仅用于低速短动作 |
+| `/wheelchair/cmd_vel_raw` | 包内发布 / 订阅 | 速度复用器 -> 安全过滤器，20 Hz，QoS `CONTROL`；仲裁结果尚未经安全校验，**禁止直接下发串口** |
 | `/cmd_vel` | 发布 | **安全过滤器输出，唯一实物底盘速度输入** |
-| `/wheelchair/safety/status` | 发布 | `SafetyStatus`，10 Hz + 事件，QoS `STATE` |
-| `/wheelchair/system/mode` | 发布 | `SystemMode`，2 Hz + 事件 |
-| `/diagnostics` | 发布 | `DiagnosticArray` |
-| `/wheelchair/safety/set_soft_estop` | Service 服务端 | `std_srvs/srv/SetBool` |
-| `/wheelchair/system/reset_fault` | Service 服务端 | `std_srvs/srv/Trigger` |
+| `/wheelchair/safety/status` | 发布 | `SafetyStatus`，10 Hz 加事件，QoS `STATE` |
+| `/wheelchair/system/mode` | 发布 | `SystemMode`，2 Hz 加事件 |
+| `/diagnostics` | 发布 | `DiagnosticArray`，诊断聚合入口 |
+| `/wheelchair/voice/intent` | 订阅 | `VoiceIntent`，状态机按标准表 C-1 处理 |
+| `/wheelchair/stand/state` | 订阅 | `StandState`，状态机与安全节点使用 |
+| `/wheelchair/perception/detections` | 订阅 | 状态机据此调度抓取 |
+| `/wheelchair/imu/data` `/wheelchair/ultrasonic/ranges` `/wheelchair/arm/wrench` | 订阅 | 安全监督输入：倾角、近距障碍、碰撞力 |
+| `/wheelchair/safety/set_soft_estop` | Service 服务端 | `std_srvs/srv/SetBool`（安全监督节点） |
+| `/wheelchair/system/reset_fault` | Service 服务端 | `std_srvs/srv/Trigger`（状态机） |
+| `/wheelchair/system/health_check` | Service 服务端 | `std_srvs/srv/Trigger`（诊断聚合节点），详细项同时发布到 `/diagnostics` |
+| `/navigate_to_pose` | Action 客户端 | 状态机下发导航目标 |
+| `/wheelchair/arm/grasp_object` | Action 客户端 | 状态机下发抓取 |
 | `/wheelchair/stand/change_posture` | Action 客户端 | 站立/坐下编排 |
 
 ## 速度仲裁优先级（标准 §4.5）
@@ -27,6 +36,8 @@
 ```
 
 语音通常生成导航目标，不直接持续发布速度。
+
+复用器的仲裁结果先发布到 `/wheelchair/cmd_vel_raw`，安全过滤器限幅与门控后再发布到 `/cmd_vel`。两级之间的话题必须保留，否则二者的连接无法被独立观测与测试（IF-09）。
 
 **速度源必须以 10 Hz 以上刷新。超过 200 ms 未更新即视为过期，复用器输出零速度。**
 
