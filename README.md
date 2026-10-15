@@ -88,6 +88,19 @@ ros2 topic list
 ros2 run tf2_tools view_frames     # TF 单树连通性（IF-04）
 ```
 
+`wheelchair_ws/src` 下 8 个包都已有 `package.xml` 与 `CMakeLists.txt`。除接口包外，其余 7 个是
+架构组代建的**空骨架**（`ament_cmake`，无节点），由各所有者组接手实现；改用 Python 的做法见各包
+`CMakeLists.txt` 顶部注释。
+
+## 持续集成
+
+向 `develop` / `main` 提 PR 时，`.github/workflows/ci.yml` 自动执行：
+
+- 在 `ros:humble-ros-base` 容器内 `colcon build` / `colcon test` 整个工作空间，并清点接口条数（IF-01）
+- `tools/check_iw_if_std_001.py`：标准正文与 `interface_registry.yaml` 一致性校验
+
+CI 结果是合并前的参考；评审要求仍按 PR 模板与标准 §8.3 执行。
+
 ## AI 工具使用
 
 依据课程任务书学术诚信要求及本标准 §10：AI 生成的代码/文档须在 PR 中登记工具名称、
