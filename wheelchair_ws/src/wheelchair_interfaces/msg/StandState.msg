@@ -18,4 +18,4 @@ uint8 state
 float32 position_ratio       # 行程比例 0.0 ~ 1.0
 bool lower_limit             # 下限位开关触发
 bool upper_limit             # 上限位开关触发
-uint32 fault_bits            # 推杆相关故障位，见表 12
+uint32 fault_bits            # 推杆相关故障位，见表 6-7

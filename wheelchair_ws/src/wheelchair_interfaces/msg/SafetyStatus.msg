@@ -14,8 +14,8 @@ uint8 ESTOP_BOTH=3
 
 uint8 estop_state
 bool drive_enabled
-bool posture_enabled
-uint32 fault_bits          # 位定义见表 12
+bool posture_enabled       # 见标准表 6-6（0xA3 偏移 16）；未收到或长度仅 16 时置 false，并须经 /diagnostics 报告来源缺失
+uint32 fault_bits          # 位定义见表 6-7
 float32 roll_rad           # 车体滚转角，rad
 float32 pitch_rad          # 车体俯仰角，rad
 float32 min_obstacle_distance_m   # 最近障碍距离，m；未知用 NaN

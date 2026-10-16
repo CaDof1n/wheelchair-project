@@ -71,6 +71,9 @@ colcon_defaults.local.yaml
 Thumbs.db
 desktop.ini
 
+# ---------- Office 临时文件（Word / PowerPoint 打开文档时生成的锁文件）----------
+~$*
+
 # ---------- Python ----------
 __pycache__/
 *.py[cod]

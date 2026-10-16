@@ -35,11 +35,13 @@ set(action_files
   "action/ChangePosture.action"   # A.8  /wheelchair/stand/change_posture
 )
 
-# Service 全部复用 std_srvs，无需自定义（标准表 10）：
+# 以下 Service 与 Action 复用标准类型，无需在本包定义（标准表 4-4）：
 #   /wheelchair/safety/set_soft_estop   std_srvs/srv/SetBool
 #   /wheelchair/system/reset_fault      std_srvs/srv/Trigger
 #   /wheelchair/system/health_check     std_srvs/srv/Trigger
 #   /navigate_to_pose                   nav2_msgs/action/NavigateToPose
+#   /arm_controller/follow_joint_trajectory
+#       control_msgs/action/FollowJointTrajectory
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   ${msg_files}

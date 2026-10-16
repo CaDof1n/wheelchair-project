@@ -5,7 +5,7 @@
 > 第六大组 · 架构与接口规范单元（第一微单元）
 
 本仓库是全项目的**单一代码基线**。目录结构、分支规则、提交规范均由
-《第一版全局软硬件接口标准》V1.0（文档编号 **IW-IF-STD-001**）定义，任何结构调整
+《第一版全局软硬件接口标准》V1.0.1（文档编号 **IW-IF-STD-001**）定义，任何结构调整
 必须先走 ICR（接口变更申请）流程。
 
 ---
@@ -39,7 +39,7 @@ wheelchair-project/
 | 项目 | 约定 |
 |---|---|
 | 操作系统 | Ubuntu 22.04 LTS |
-| ROS 2 | **Humble** 为集成基线；Iron 节点须证明消息与 QoS 兼容 |
+| ROS 2 | **Humble** 为集成基线；不考虑 Iron，Jazzy 仅作上游参考 |
 | DDS 域 | `ROS_DOMAIN_ID=26` |
 | 工作空间 | `wheelchair_ws` |
 | 仿真时间 | 仿真节点 `use_sim_time=true`；实物统一 `false` |
@@ -52,6 +52,7 @@ wheelchair-project/
 | 集成分支 | `develop` | 各组联调入口，通过构建与接口测试后合并 |
 | 功能分支 | `feature/gN-issue-short-name` | N 为大组编号，一个分支一个任务 |
 | 修复分支 | `fix/gN-issue-short-name` | 修复缺陷，不夹带无关重构 |
+| 文档分支 | `docs/short-name` | 接口文档、标准与注册表变更 |
 | 发布分支 | `release/vX.Y` | 冻结接口，只允许修复阻断问题 |
 | 标签 | `vX.Y.Z` | 阶段验收、仿真验收、实物验收必须打标签 |
 
@@ -78,6 +79,7 @@ V1.x 内**不得**改变已有字段含义。新增可选字段或接口 → 次
 ## 快速开始
 
 ```bash
+source /opt/ros/humble/setup.bash
 cd wheelchair_ws
 colcon build --symlink-install
 source install/setup.bash
@@ -87,6 +89,21 @@ ros2 interface list | grep wheelchair_interfaces
 ros2 topic list
 ros2 run tf2_tools view_frames     # TF 单树连通性（IF-04）
 ```
+
+`wheelchair_ws/src` 下 8 个包都已有 `package.xml` 与 `CMakeLists.txt`。除接口包外，其余 7 个是
+架构组代建的**空骨架**（`ament_cmake`，无节点），由各所有者组接手实现；改用 Python 的做法见各包
+`CMakeLists.txt` 顶部注释。
+
+## 持续集成
+
+CI 配置已准备，**截至 2026-10-16 尚未推送运行**（当前 GitHub 授权缺少 `workflow` 权限）。
+其余 7 个骨架包尚未进行 Humble 实际构建，不能把静态检查通过当作整工作空间构建通过。
+配置上线后，向 `develop` / `main` 提 PR 时将自动执行：
+
+- 在 `ros:humble-ros-base` 容器内 `colcon build` / `colcon test` 整个工作空间，并清点接口条数（IF-01）
+- `tools/check_iw_if_std_001.py`：标准正文与 `interface_registry.yaml` 一致性校验
+
+CI 结果是合并前的参考；评审要求仍按 PR 模板与标准 §8.3 执行。
 
 ## AI 工具使用
 
