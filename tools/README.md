@@ -8,7 +8,7 @@
 
 | 工具 | 用途 |
 |---|---|
-| `gen_iw_if_std_001.py` | **已入库**。生成《第一版全局软硬件接口标准》V1.0 的 docx。改动正文后重跑本脚本，并同步注册表 |
+| `gen_iw_if_std_001.py` | **已入库**。生成《第一版全局软硬件接口标准》V1.0.1 的 docx。改动正文后重跑本脚本，并同步注册表 |
 | `make_arch_figure.py` | **已入库**。生成标准图 1 整机通信架构框图（PNG 300 dpi + SVG）。改图后须重跑 `gen_iw_if_std_001.py`，正文嵌入的图才会更新 |
 | `check_iw_if_std_001.py` | **已入库**。一致性校验：题注完整性、表/图引用可解析、正文与注册表交叉比对、示例帧 CRC 复算 |
 | `ros_container_build.sh` | **已入库**。在容器（`ros:humble-ros-base`）里构建并验证 ROS 2 包：宿主机没有 ROS 2 时用。`src` 只读挂载，产物不落回仓库 |
@@ -42,9 +42,10 @@ python tools/check_render_pdf.py <临时目录>/std.pdf
 构建日志里的发行版信息请**如实抄进验证记录**——若哪天只在别的发行版上跑通，
 Humble 仍记为待验证（标准 §4.1）。
 
-PR 提交到 `develop` / `main` 时，`.github/workflows/ci.yml` 会在 GitHub Actions 上
-自动执行同样的构建（`ros:humble-ros-base` 容器内 `colcon build` / `colcon test`，
-并清点接口条数），同时运行 `check_iw_if_std_001.py`。本机能跑容器时仍建议先自测。
+PR 提交到 `develop` / `main` 时，CI 配置设计为自动执行同样的构建
+（`ros:humble-ros-base` 容器内 `colcon build` / `colcon test`，并清点接口条数），
+同时运行 `check_iw_if_std_001.py`。**截至 2026-10-16 配置尚未推送运行**，
+当前授权缺少 `workflow` 权限，不能据此声称 7 个骨架包已构建通过。本机能跑容器时仍建议先自测。
 
 `render_office_pdf.ps1` 导出的 PDF 请放在仓库外的临时目录，不要提交。
 

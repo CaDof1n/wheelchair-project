@@ -39,7 +39,7 @@ wheelchair-project/
 | 项目 | 约定 |
 |---|---|
 | 操作系统 | Ubuntu 22.04 LTS |
-| ROS 2 | **Humble** 为集成基线；Iron 节点须证明消息与 QoS 兼容 |
+| ROS 2 | **Humble** 为集成基线；不考虑 Iron，Jazzy 仅作上游参考 |
 | DDS 域 | `ROS_DOMAIN_ID=26` |
 | 工作空间 | `wheelchair_ws` |
 | 仿真时间 | 仿真节点 `use_sim_time=true`；实物统一 `false` |
@@ -79,6 +79,7 @@ V1.x 内**不得**改变已有字段含义。新增可选字段或接口 → 次
 ## 快速开始
 
 ```bash
+source /opt/ros/humble/setup.bash
 cd wheelchair_ws
 colcon build --symlink-install
 source install/setup.bash
@@ -95,7 +96,9 @@ ros2 run tf2_tools view_frames     # TF 单树连通性（IF-04）
 
 ## 持续集成
 
-向 `develop` / `main` 提 PR 时，`.github/workflows/ci.yml` 自动执行：
+CI 配置已准备，**截至 2026-10-16 尚未推送运行**（当前 GitHub 授权缺少 `workflow` 权限）。
+其余 7 个骨架包尚未进行 Humble 实际构建，不能把静态检查通过当作整工作空间构建通过。
+配置上线后，向 `develop` / `main` 提 PR 时将自动执行：
 
 - 在 `ros:humble-ros-base` 容器内 `colcon build` / `colcon test` 整个工作空间，并清点接口条数（IF-01）
 - `tools/check_iw_if_std_001.py`：标准正文与 `interface_registry.yaml` 一致性校验
