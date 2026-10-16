@@ -1,0 +1,70 @@
+# PR 门禁的自动化部分（标准 §8.3、§9.1 IF-01）
+# - colcon：在 Ubuntu 22.04 + ROS 2 Humble 容器里构建并测试整个 wheelchair_ws
+# - docs：标准正文与 interface_registry.yaml 的一致性校验
+# 只读检查，不改分支保护设置；结果供评审人合并前参考。
+name: CI
+
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  colcon:
+    name: colcon build / test（Humble）
+    runs-on: ubuntu-22.04
+    container: ros:humble-ros-base
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装依赖（rosdep）
+        run: |
+          apt-get update
+          rosdep update --rosdistro humble
+          rosdep install --from-paths wheelchair_ws/src --ignore-src -y --rosdistro humble
+
+      - name: colcon build
+        working-directory: wheelchair_ws
+        run: |
+          source /opt/ros/humble/setup.bash
+          colcon build --symlink-install --event-handlers console_cohesion+
+
+      - name: 接口清点（IF-01）
+        working-directory: wheelchair_ws
+        run: |
+          source install/setup.bash
+          expected=$(find src/wheelchair_interfaces -name '*.msg' -o -name '*.srv' -o -name '*.action' | wc -l)
+          ros2 interface package wheelchair_interfaces | sort | tee /tmp/interfaces.txt
+          actual=$(wc -l < /tmp/interfaces.txt)
+          echo "接口定义文件 ${expected} 个，生成接口 ${actual} 条"
+          test "${actual}" -eq "${expected}"
+
+      - name: colcon test
+        working-directory: wheelchair_ws
+        run: |
+          source install/setup.bash
+          colcon test --event-handlers console_cohesion+
+          colcon test-result --verbose
+
+  docs:
+    name: 标准与注册表一致性
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyyaml python-docx
+      - run: python tools/check_iw_if_std_001.py
