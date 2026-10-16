@@ -32,6 +32,7 @@ jobs:
       - name: 安装依赖（rosdep）
         run: |
           apt-get update
+          apt-get install -y python3-colcon-common-extensions python3-rosdep
           rosdep update --rosdistro humble
           rosdep install --from-paths wheelchair_ws/src --ignore-src -y --rosdistro humble
 
