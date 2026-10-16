@@ -9,7 +9,7 @@ Gazebo / Isaac Sim 仿真环境、`use_sim_time` 与 `/clock` 管理、仿真场
 | 接口 | 角色 | 说明 |
 |---|---|---|
 | `/clock` | 发布 | `rosgraph_msgs/msg/Clock`，**仅仿真发布** |
-| `/wheelchair/ultrasonic/ranges` | 发布 | 仿真超声波 |
+| `/wheelchair/ultrasonic/ranges` | 发布 | 仿真超声波，50 Hz（下限 10 Hz），与实物同名同类型 |
 | 其余传感器 Topic | 仿真替身 | 名称必须与实物**完全一致** |
 
 ## 硬性约束

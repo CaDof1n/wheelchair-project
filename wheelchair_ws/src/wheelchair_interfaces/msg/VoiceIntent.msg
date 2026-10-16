@@ -7,7 +7,7 @@
 
 std_msgs/Header header
 
-string intent                # 结构化意图标识，如 navigate_to / stop / query_status
+string intent                # 意图标识，取值见标准表 C-1（如 NAVIGATE_TO / STOP / CANCEL）
 string[] parameter_names     # 与 parameter_values 一一对应
 string[] parameter_values
 float32 confidence           # 置信度 0.0 ~ 1.0，低于阈值应丢弃并上报

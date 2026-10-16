@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>wheelchair_navigation</name>
+  <version>0.0.0</version>
+  <description>
+    SLAM、定位、Nav2 路径规划与避障。所有者：自动导航与 SLAM 算法组。
+
+    本包目前是架构与接口规范单元按标准 §8.1 代建的空骨架，只有 package.xml 与
+    CMakeLists.txt，没有节点。公开接口以 README.md 与
+    docs/interfaces/interface_registry.yaml 为准，增改须先走 ICR（标准 §8.4）。
+    所有者组接手时请把 maintainer 改为本组负责人。
+  </description>
+
+  <maintainer email="cadofin@163.com">第六大组 · 架构与接口规范单元（骨架代建）</maintainer>
+  <license>Proprietary</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
